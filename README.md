@@ -65,7 +65,29 @@ The trained model (.pt file) should be placed in *scenting_classification/saved_
 - `-b` or `--batch_size`: Batch size (default: `32`)
 - `-c` or `--num_classes`: Number of classes (default: `2`)
 
-### Output: In the data folder for this specific movie, *data_log_scenting.json* will be created from this step. This builds upon *data_log.json* and adds a 'classification' to each bee in each frame.
+### Output:
+In the data folder for this specific movie, *data_log_scenting.json* will be created from this step. This builds upon *data_log.json* and adds a 'classification' to each bee in each frame.
+
+### To retrain model:
+Training data should be in *data/training_data/scenting_classifier*. Sample labeled data is provided here.
+
+Navigate to *scenting_classification* and run `python train_scenting_classifier.py`. At the end of training, evaluation plots (training curves, ROCs, confusion matrices) will be made and stored in *eval_visualization*.
+
+**Command line parameters:**
+- `-p` or `--data_root`: Path to the data folder (default: `'../data/training_data/scenting_classifier'`)
+- `-l` or `--load_idxs`: Load previous data splitting indices (default: False)
+- `-d` or `--dropout`: Apply drop out (default: 0.0)
+- `-a` or `--augmentation`: Apply augmentations (default: True)
+- `-t` or `--test_split`: Test set split proportion (default: 0.2)
+- `-v` or `--val_split`: Validation set split proportion (default: 0.1)
+- `-s` or `--shuffle`: Shuffle data sets (default: True)
+- `-b` or `--batch_size`: Batch size (default: 32)
+- `-c` or `--num_classes`: Number of classes (default: 2)
+- `-r` or `--learning_rate`: Learning rate (default: 0.0001)
+- `-m` or `--load_model`: Load a model (default: False)
+- `-f` or `--load_path`: Path to model to load (default: `saved_models/ResnetScentingModel.pt`)
+- `-e` or `--num_epochs`: Number of training epochs (default: 20)
+- `-q` or `--save_freq`: Frequency for saving model (default: 10)
 
 <!-- ----------------------------------------------------------------------- -->
 
@@ -85,7 +107,28 @@ The trained model (.pt file) should be placed in *orientation_estimation/saved_m
 - `-b` or `--batch_size`: Batch size (default: `32`)
 - `-c` or `--num_classes`: Number of classes (default: `1`)
 
-### Output: In the data folder for this specific movie, *data_log_orientation.json* will be created from this step. This builds upon *data_log.json* and *data_log_orientation.json* and adds an 'orientation' angle to each bee in each frame.
+### Output:
+In the data folder for this specific movie, *data_log_orientation.json* will be created from this step. This builds upon *data_log.json* and *data_log_orientation.json* and adds an 'orientation' angle to each bee in each frame.
+
+### To retrain model:
+Training data should be in *data/training_data/orientation_estimation*. Sample labeled data is provided here.
+
+Navigate to *orientation_estimation* and run `python train_orientation_estimator.py`. At the end of training, evaluation plots (training curves, degree tolerance) will be made and stored in *eval_visualization*.
+
+**Command line parameters:**
+- `-p` or `--data_root`: Path to the data folder (default: `'../data/training_data/scenting_classifier'`)
+- `-l` or `--load_idxs`: Load previous data splitting indices (default: False)
+- `-t` or `--test_split`: Test set split proportion (default: 0.2)
+- `-v` or `--val_split`: Validation set split proportion (default: 0.1)
+- `-s` or `--shuffle`: Shuffle data sets (default: True)
+- `-b` or `--batch_size`: Batch size (default: 32)
+- `-c` or `--num_classes`: Number of classes (default: 2)
+- `-r` or `--learning_rate`: Learning rate (default: 0.0001)
+- `-m` or `--load_model`: Load a model (default: False)
+- `-f` or `--load_path`: Path to model to load (default: `saved_models/ResnetScentingModel.pt`)
+- `-e` or `--num_epochs`: Number of training epochs (default: 20)
+- `-q` or `--save_freq`: Frequency for saving model (default: 10)
+- `-w` or `--deg_error`: Degree of error tolerated for evaluating during training (default: 10)
 
 <!-- ----------------------------------------------------------------------- -->
 
@@ -103,7 +146,8 @@ The *data_log_orientation.json* from step 3 and the frame images (e.g. *denoised
 - `-p` or `--data_root`: Path to the data folder (default: `data/processed`)
 - `-r` or `--fps`: Frames per second of output movie (default: `15`)
 
-### Output: In the data folder for this specific movie, a folder *output_frames* will be created to store the annotated frames and the *output_movie.mp4* will be created to make a movie of all the annotated frames.
+### Output:
+In the data folder for this specific movie, a folder *output_frames* will be created to store the annotated frames and the *output_movie.mp4* will be created to make a movie of all the annotated frames.
 
 Example output frame (green=individuals, purple=clusters):
 <p align="center">
