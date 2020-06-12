@@ -1,4 +1,5 @@
-# Collective Olfactory Communication in Honey Bees - Computer Vision Pipeline
+# Collective Olfactory Communication in Honey Bees
+# Computer Vision Pipeline
 
 ## Overview:
 This repo provides the code for the computer vision/deep learning pipeline used to analyze honey bee experimental data in [(Nguyen et al. 2020)](https://www.biorxiv.org/content/10.1101/2020.05.23.112540v1). The pipeline primarily includes dense object detection of individual bees in videos, classification of bees into scenting bees (wide wing angles as primary proxy for scenting), and estimation of the bees' body orientations.
