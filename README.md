@@ -79,6 +79,12 @@ The trained model (.pt file) should be placed in *orientation_estimation/saved_m
 ### Usage:
 `python step_3__run_orientation_estimator.py` runs the classification data through the model to estimate the body orientation angle of individual bees. Running on a GPU is highly recommended for speed.
 
+**Command line parameters:**
+- `-p` or `--data_root`: Path to the data folder (default: `data/processed`)
+- `-m` or `--model_file`: Name of trained model (default: `ResnetOrientationModel.pt`)
+- `-b` or `--batch_size`: Batch size (default: `32`)
+- `-c` or `--num_classes`: Number of classes (default: `1`)
+
 ### Output: In the data folder for this specific movie, *data_log_orientation.json* will be created from this step. This builds upon *data_log.json* and *data_log_orientation.json* and adds an 'orientation' angle to each bee in each frame.
 
 <!-- ----------------------------------------------------------------------- -->
@@ -92,6 +98,10 @@ The *data_log_orientation.json* from step 3 and the frame images (e.g. *denoised
 
 ### Usage:
 `python step_4__visualize.py` plots orientation arrows on the scenting bees and outputs a movie of all the frames provided.
+
+**Command line parameters:**
+- `-p` or `--data_root`: Path to the data folder (default: `data/processed`)
+- `-r` or `--fps`: Frames per second of output movie (default: `15`)
 
 ### Output: In the data folder for this specific movie, a folder *output_frames* will be created to store the annotated frames and the *output_movie.mp4* will be created to make a movie of all the annotated frames.
 
