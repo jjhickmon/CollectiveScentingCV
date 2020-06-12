@@ -9,7 +9,10 @@ This repo provides the code for the computer vision/deep learning pipeline used 
 - NumPy 1.17.4
 - mH5py 2.10.0
 - Matplotlib 3.1.1
+
 The complete list of required packages provided in requirements.txt, which you can install in your environment with the command pip install -r requirements.txt. Setting up a Python virtual environment, such as [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html), is highly recommended.
+
+<!-- ----------------------------------------------------------------------- -->
 
 ## Step 1. Detect bees
 
@@ -32,11 +35,23 @@ Images of frames extracted from video. Images should be stored in *data/processe
 
 Example GUI labeling:
 <p align="center">
-<img src="doc/detection_gui.png" width="500"/>
+<img src="doc/detection_gui.png" width="700"/>
 <p>
 
 ### Output:
-A folder called *UI_annotation_history* will be made in the data folder to store the annotation history for future uses. After the algorithm detects bees, *data_log.json* will be created and it stores information of all the detected bees: the x, y positions of the bounding box top left corner and the width and height of that box. For visualization, a folder `detection_frames` and movie `detection_movie.mp4` will be created to show the output detections.
+A folder called *UI_annotation_history* will be made in the data folder to store the annotation history for future uses. After the algorithm detects bees, *data_log.json* will be created and it stores information of all the detected bees: the x, y positions of the bounding box top left corner and the width and height of that box. For visualization, a folder *detection_frames* and movie *detection_movie.mp4* will be created to show the output detections.
+
+Example output frame (green=individuals, purple=clusters):
+<p align="center">
+<img src="doc/example_detections.png" width="600"/>
+<p>
+
+<!-- ----------------------------------------------------------------------- -->
+
+## Step 2. Classify scenting bees
 
 
-## Step 2. Classify scenting bees & estimate orientation
+
+<!-- ----------------------------------------------------------------------- -->
+
+## Step 3. Estimate orientations
