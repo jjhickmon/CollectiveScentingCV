@@ -201,7 +201,7 @@ def process_images(denoised_filepaths, drawn_frames_dir, min_area, max_area):
 
 def main(UI, args):
     # Select the video
-    print("-- Select video from list...")
+    print("-- Select video/data folder from list...")
     src_processed_root = general_utils.select_file(args.data_root)
 
     # Create helper dirs
@@ -234,21 +234,21 @@ def main(UI, args):
 
 def setup_args():
     parser = argparse.ArgumentParser(description='Process bee videos!')
-    parser.add_argument('--i', dest='data_root', type=str, default='data/processed',
+    parser.add_argument('-p', '--data_root', dest='data_root', type=str, default='data/processed',
                         help='Set path to processed video frames')
     parser.add_argument('-r', '--fps', dest='FPS', type=float, default=25,
                         help='Frames per second (FPS)')
-    parser.add_argument('--limit', dest='limit', type=int, default=0,
+    parser.add_argument('-l', '--limit', dest='limit', type=int, default=0,
                         help='Processing limit')
-    parser.add_argument('--v', dest='verbose', type=bool, default=False,
+    parser.add_argument('-v', '--verbose', dest='verbose', type=bool, default=False,
                         help='FFMPEG Verbosity')
-    parser.add_argument('--f', dest='force', type=bool, default=True,
+    parser.add_argument('-f', '--force', dest='force', type=bool, default=True,
                         help='Force overwrite: True/False')
-    parser.add_argument('--clusters', dest='draw_clusters', type=bool, default=True,
+    parser.add_argument('-c', '--draw_clusters', dest='draw_clusters', type=bool, default=True,
                         help='Draw cluster detections')
-    parser.add_argument('--trash', dest='draw_trash', type=bool, default=False,
+    parser.add_argument('-t', '--draw_trash', dest='draw_trash', type=bool, default=False,
                         help='Draw trash detections')
-    parser.add_argument('--prevUI', dest='load_prev_UI_results', type=bool, default=False,
+    parser.add_argument('-u', '--prevUI', dest='load_prev_UI_results', type=bool, default=False,
                         help='Use previous UI results?')
 
     parser.add_argument('--img_idx', dest='img_i', type=int, default=1, help='Image index to label for this video')
