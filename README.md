@@ -5,12 +5,15 @@
 This repo provides the code for the computer vision/deep learning pipeline used to analyze honey bee experimental data in [(Nguyen et al. 2020)](https://www.biorxiv.org/content/10.1101/2020.05.23.112540v1). The pipeline primarily includes dense object detection of individual bees in videos, classification of bees into scenting bees (wide wing angles as primary proxy for scenting), and estimation of the bees' body orientations.
 
 ## Main requirements (versions tested on):
-- Python 3.8.3
-- NumPy 1.17.4
-- mH5py 2.10.0
-- Matplotlib 3.1.1
+- Python 3.6.10
+- NumPy 1.18.5
+- OpenCV 4.1.1.26
+- PyTorch 1.3.1
+- PyTorch TorchVision 0.4.2
+- Matplotlib 3.1.3
+- [FFmpeg](https://ffmpeg.org/)
 
-The complete list of required packages provided in requirements.txt, which you can install in your environment with the command pip install -r requirements.txt. Setting up a Python virtual environment, such as [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html), is highly recommended.
+The complete list of required packages (besides FFmpeg) provided in requirements.txt, which you can install in your environment with the command pip install -r requirements.txt. Setting up a Python virtual environment, such as [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html), is highly recommended.
 
 <!-- ----------------------------------------------------------------------- -->
 
@@ -22,17 +25,17 @@ This is a semi-automatic process that uses Otsu’s adaptive thresholding, morph
 Images of frames extracted from video. Images should be stored in *data/processed/{folder_name}/{frames_folder_name}/*. A small dataset is provided [here](https://drive.google.com/drive/folders/1adOMmJc2hFB4eaDnGkpJkUybTysl3bRh?usp=sharing), and should be unzipped and placed in *data/processed/*. Inside the dataset folder, *denoised_frames/* holds the images from a short video. There is also a folder *UI_annotation_history* that holds sample data for the annotation desribed below.
 
 ### Usage:
-`python step_1__run_detection.py` takes in the (preprocessed) frame images from a chosen data folder and launches an interactive GUI with one frame (i.e. the first frame) and allows the user to click on centers of individual bees that are expected to be detected as individuals. Bees that touch or overlap one another should not be labeled and will be automatically detected as clusters. See example below for the GUI and bees that should be labeled (green dots). After the user finishes labeling this frame, the algorithm will use the labels to search for parameters that will maximize accuracy of the algorithm's predictions checked against the user-provided labels. The best parameters are then used to automatically process the rest of the frames to detect individual bees and bees in clusters.
+**`python step_1__run_detection.py`** takes in the (preprocessed) frame images from a chosen data folder and launches an interactive GUI with one frame (i.e. the first frame) and allows the user to click on centers of individual bees that are expected to be detected as individuals. Bees that touch or overlap one another should not be labeled and will be automatically detected as clusters. See example below for the GUI and bees that should be labeled (green dots). After the user finishes labeling this frame, the algorithm will use the labels to search for parameters that will maximize accuracy of the algorithm's predictions checked against the user-provided labels. The best parameters are then used to automatically process the rest of the frames to detect individual bees and bees in clusters.
 
 **Command line parameters:**
 - `-p` or `--data_root`: Path to the data folder (default: `data/processed`)
-- `-r` or `--fps`: Frame per second for output movie (default: 25)
-- `-l` or `--limit`: Limit of images to process (default: 0)
-- `-v` or `--verbose`: FFMPEG Verbosity when visualizing (default: False)
-- `-f` or `--force`: Force overwrite in data folder (default: True)
-- `-c` or `--draw_clusters`: Draw cluster detections (default: True)
-- `-t` or `--draw_trash`: Draw trash detections (default: False)
-- `-u` or `--prevUI`: Use previous UI results (default: False)
+- `-r` or `--fps`: Frame per second for output movie (default: `25`)
+- `-l` or `--limit`: Limit of images to process (default: `0`)
+- `-v` or `--verbose`: FFMPEG Verbosity when visualizing (default: `False`)
+- `-f` or `--force`: Force overwrite in data folder (default: `True`)
+- `-c` or `--draw_clusters`: Draw cluster detections (default: `True`)
+- `-t` or `--draw_trash`: Draw trash detections (default: `False`)
+- `-u` or `--prevUI`: Use previous UI results (default: `False`)
 
 Example GUI labeling:
 <p align="center">
@@ -57,7 +60,7 @@ After detections in step 1, the individual bees can then be classified into scen
 The trained model (.pt file) should be placed in *scenting_classification/saved_models*. Input data to be processed should be in *data/processed/{folder_name}*: the *data_log.json* and the frame images (e.g. *denoised_frames*).
 
 ### Usage:
-`python step_2__run_scenting_classification.py` runs the detection data through the model to classify individual bees into scenting or non-scenting. Running on a GPU is highly recommended for speed.
+**`python step_2__run_scenting_classification.py`** runs the detection data through the model to classify individual bees into scenting or non-scenting. Running on a GPU is highly recommended for speed.
 
 **Command line parameters:**
 - `-p` or `--data_root`: Path to the data folder (default: `data/processed`)
@@ -71,7 +74,7 @@ In the data folder for this specific movie, *data_log_scenting.json* will be cre
 ### To retrain model:
 Training data should be in *data/training_data/scenting_classifier*. Sample labeled data is provided [here](https://drive.google.com/drive/folders/14bVvOCAwD4TbqOD0GoJ1msMFzvYZIICg?usp=sharing).
 
-Navigate to *scenting_classification* and run `python train_scenting_classifier.py`. Trained models will be stored in *saved_models*. At the end of training, evaluation plots (training curves, ROCs, confusion matrices) will be made and stored in *eval_visualization*.
+Navigate to *scenting_classification* and run **`python train_scenting_classifier.py`**. Trained models will be stored in *saved_models*. At the end of training, evaluation plots (training curves, ROCs, confusion matrices) will be made and stored in *eval_visualization*.
 
 **Command line parameters:**
 - `-p` or `--data_root`: Path to the data folder (default: `'../data/training_data/scenting_classifier'`)
@@ -99,7 +102,7 @@ We can also obtain the body orientation of the scenting bees to know their scent
 The trained model (.pt file) should be placed in *orientation_estimation/saved_models*. Input data to be processed should be in *data/processed/{folder_name}*: the *data_log_scenting.json* and the frame images (e.g. *denoised_frames*).
 
 ### Usage:
-`python step_3__run_orientation_estimator.py` runs the classification data through the model to estimate the body orientation angle of individual bees. Running on a GPU is highly recommended for speed.
+**`python step_3__run_orientation_estimator.py`** runs the classification data through the model to estimate the body orientation angle of individual bees. Running on a GPU is highly recommended for speed.
 
 **Command line parameters:**
 - `-p` or `--data_root`: Path to the data folder (default: `data/processed`)
@@ -113,7 +116,7 @@ In the data folder for this specific movie, *data_log_orientation.json* will be 
 ### To retrain model:
 Training data should be in *data/training_data/orientation_estimation*. Sample labeled data is provided [here](https://drive.google.com/open?id=11t5OYkj43LwlPKBGpeGw4E4OeKpwfopD).
 
-Navigate to *orientation_estimation* and run `python train_orientation_estimator.py`. Trained models will be stored in *saved_models*. At the end of training, evaluation plots (training curves, degree tolerance) will be made and stored in *eval_visualization*.
+Navigate to *orientation_estimation* and run **`python train_orientation_estimator.py`**. Trained models will be stored in *saved_models*. At the end of training, evaluation plots (training curves, degree tolerance) will be made and stored in *eval_visualization*.
 
 **Command line parameters:**
 - `-p` or `--data_root`: Path to the data folder (default: `'../data/training_data/scenting_classifier'`)
@@ -140,7 +143,7 @@ After the whole detection and scenting recognition pipeline, we can make a movie
 The *data_log_orientation.json* from step 3 and the frame images (e.g. *denoised_frames*).
 
 ### Usage:
-`python step_4__visualize.py` plots orientation arrows on the scenting bees and outputs a movie of all the frames provided.
+**`python step_4__visualize.py`** plots orientation arrows on the scenting bees and outputs a movie of all the frames provided.
 
 **Command line parameters:**
 - `-p` or `--data_root`: Path to the data folder (default: `data/processed`)
@@ -153,3 +156,7 @@ Example output frame (green=individuals, purple=clusters):
 <p align="center">
 <img src="doc/example_orientations.png" width="500"/>
 <p>
+
+Reference:
+Nguyen DMT, Iuzzolino ML, Mankel A, Bozek K, Stephens GJ, Peleg O (2020). Flow-Mediated Collective Olfactory
+Communication in Honeybee Swarms. bioRxiv 2020.05.23.112540; doi: https://doi.org/10.1101/2020.05.23.112540.
