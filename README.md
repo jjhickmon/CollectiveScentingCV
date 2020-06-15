@@ -5,7 +5,7 @@
 This repo provides the code for the computer vision/deep learning pipeline used to analyze honey bee experimental data in [(Nguyen et al. 2020)](https://www.biorxiv.org/content/10.1101/2020.05.23.112540v1). The pipeline primarily includes dense object detection of individual bees in videos, classification of bees into scenting bees (wide wing angles as primary proxy for scenting), and estimation of the bees' body orientations.
 
 ## Main requirements (versions tested on):
-- Python 3.6.10
+- Python 3.6
 - NumPy 1.18.5
 - OpenCV 4.1.1.26
 - PyTorch 1.3.1
@@ -13,7 +13,7 @@ This repo provides the code for the computer vision/deep learning pipeline used 
 - Matplotlib 3.1.3
 - [FFmpeg](https://ffmpeg.org/)
 
-The complete list of required packages (besides FFmpeg) provided in requirements.txt, which you can install in your environment with the command pip install -r requirements.txt. Setting up a Python virtual environment, such as [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html), is highly recommended.
+The complete list of required packages (besides FFmpeg) provided in *requirements.txt*, which you can install in your environment with the command `pip install -r requirements.txt`. Setting up a Python virtual environment, such as [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html), is highly recommended.
 
 <!-- ----------------------------------------------------------------------- -->
 
