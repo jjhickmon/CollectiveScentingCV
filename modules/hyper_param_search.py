@@ -184,12 +184,12 @@ class Search():
                     continue
                 else:
                     num_targets += 1
-                if x1 < gt_x < x2 and y1 < gt_y < y2:
-                    try:
+                try:
+                    if x1 < gt_x < x2 and y1 < gt_y < y2:
                         num_found += 1
                         del update_gt_points[g_i]
-                    except:
-                        continue
+                except:
+                    continue
 
             gt_points = update_gt_points
         num_targets = max(1, num_targets)
