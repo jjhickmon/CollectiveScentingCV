@@ -269,14 +269,14 @@ def evaluate_plots(save_path, metrics, test_loader, train_loader, model, criteri
     plt.savefig(f'{save_path}/training_curves.png', dpi=150)
 
     # Compute accuracy with tolerances
-    tolerance_array_deg = np.arange(0, 30+1, 5)
+    tolerance_array_deg = np.arange(0, 30+1.01, 5)
     tolerance_array_rad = np.deg2rad(tolerance_array_deg)
 
     accs_across_tolerances = []
     with torch.no_grad():
         model.eval()
         for tol_i, tol in enumerate(tolerance_array_rad):
-            print(f'Tol: {np.rad2deg(tol)} or +- {np.rad2deg(tol)/2}')
+            print(f'Tol: {np.ceil(np.rad2deg(tol))} or +- {np.rad2deg(tol)/2:0.2f}')
             test_acc, test_loss = evaluate(test_loader, model, criterion, device, tol, BATCH_SIZE)
             print('\n')
             accs_across_tolerances.append(test_acc)

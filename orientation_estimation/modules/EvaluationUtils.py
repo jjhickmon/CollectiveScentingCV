@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 sns.set(style="ticks")
 plt.rcParams["font.family"] = "Arial"
 
-import orientation_estimation.modules.Utils as Utils
+# import orientation_estimation.modules.Utils as Utils
+import modules.Utils as Utils
 
 def evaluate_for_ROC(loader, model, threshold=0.5):
     with torch.no_grad():
