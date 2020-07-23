@@ -5,6 +5,7 @@ import sys
 import cv2
 import glob
 import json
+import shutil
 import pickle
 import argparse
 import pandas as pd
@@ -191,12 +192,12 @@ def evaluate_plots(save_path, metrics, test_loader, train_loader, model, criteri
     model = model.to('cpu')
     test_truth_outputs = Evaluation.evaluation_dataframe(thresholds, test_loader, model)
     test_truth_outputs.reindex(['tp', 'tn', 'fp', 'fn', 'tpr', 'fpr', 'predicted_ys', 'true_ys'])
-    test_truth_outputs.to_pickle('test_truth_outputs.pkl')
+    # test_truth_outputs.to_pickle('test_truth_outputs.pkl')
     Evaluation.plot_ROC(test_truth_outputs, 'test', 'orange', save_path)
 
     train_truth_outputs = Evaluation.evaluation_dataframe(thresholds, train_loader, model)
     train_truth_outputs.reindex(['tp', 'tn', 'fp', 'fn', 'tpr', 'fpr', 'predicted_ys', 'true_ys'])
-    train_truth_outputs.to_pickle('train_truth_outputs.pkl')
+    # train_truth_outputs.to_pickle('train_truth_outputs.pkl')
     Evaluation.plot_ROC(train_truth_outputs, 'train', 'g', save_path)
 
     # Confusion matrix, f1-score
@@ -239,6 +240,10 @@ def main(args):
     SAVE_FREQ = args.save_freq
 
     print("\n---------- Training scenting classifier ----------")
+    dir = 'eval_visualization'
+    if os.path.exists(dir):
+        shutil.rmtree(dir)
+    os.makedirs(dir)
 
     # ------------------------------------------------------------- #
     ##### DATASET & TRANSFORMS ######
