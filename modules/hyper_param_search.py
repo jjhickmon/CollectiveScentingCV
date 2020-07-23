@@ -90,7 +90,7 @@ class Visualizer():
         # cmds += '\nc: Chance class:'
         # cmds += '    Cluster (Green)'
         # cmds += '    Individual (Red)'
-        cmds += '\nu: Undo'
+        cmds += '\nu: Undo previous label'
         # cmds += '\n]: Increase Size'
         # cmds += '\n[: Decrease Size'
         cmds += '\nq: Quit/Finish'
@@ -185,8 +185,11 @@ class Search():
                 else:
                     num_targets += 1
                 if x1 < gt_x < x2 and y1 < gt_y < y2:
-                    num_found += 1
-                    del update_gt_points[g_i]
+                    try:
+                        num_found += 1
+                        del update_gt_points[g_i]
+                    except:
+                        continue
 
             gt_points = update_gt_points
         num_targets = max(1, num_targets)
@@ -198,14 +201,9 @@ class UserInterface():
     def __init__(self):
         self.evaluate_groups = True
         stepsize = 100
-        # Commented out: for scenting arena
-        # self.min_areas = list(range(100, 700, stepsize))
-        # self.max_areas = list(range(800, 2000, stepsize))
-        # For trophallaxis arena:
 
-
-        self.min_areas = list(range(500, 700, stepsize))
-        self.max_areas = list(range(700, 2200, stepsize))
+        self.min_areas = list(range(100, 700, stepsize))
+        self.max_areas = list(range(800, 2000, stepsize))
 
     def eval_individual_detections(self, ground_truth_points):
         min_maxs = []
@@ -229,7 +227,14 @@ class UserInterface():
 
         with open(self.gt_points_path, 'w') as outfile:
             print(f"Saving GT points to '{self.gt_points_path}' ")
-            ground_truth_points_save = [(float(x), float(y), label) for (x,y), label in ground_truth_points]
+            # ground_truth_points_save = [(float(x), float(y), label) for (x,y), label in ground_truth_points]
+            ground_truth_points_save = []
+            for (x,y), label in ground_truth_points:
+                try:
+                    ground_truth_points_save.append((float(x), float(y), label))
+                except:
+                    continue
+
             json.dump(ground_truth_points_save, outfile)
 
         # Run individual accuracies
@@ -239,7 +244,6 @@ class UserInterface():
         # Run group accuracies
         if self.evaluate_groups:
             group_accuracies = self.eval_cluster_detections(min_maxs, ground_truth_points)
-            # print("Fin.")
 
             accuracies = [sum(ele) for ele in list(zip(individual_accuracies, group_accuracies))]
         else:
