@@ -13,7 +13,7 @@ This repo provides the code for the computer vision/deep learning pipeline used 
 - Matplotlib 3.1.3
 - [FFmpeg](https://ffmpeg.org/)
 
-The complete list of required packages (besides FFmpeg) provided in *requirements.txt*, which you can install in your environment with the command `pip install -r requirements.txt`. Setting up a Python virtual environment, such as [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) with [pip], is highly recommended.
+The complete list of required packages (besides FFmpeg) provided in *requirements.txt*, which you can install in your environment with the command `pip install -r requirements.txt`. Setting up a Python virtual environment, such as [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) with `pip`, is highly recommended.
 
 <!-- ----------------------------------------------------------------------- -->
 
@@ -29,7 +29,7 @@ Images of frames extracted from video. Images should be stored in *data/processe
 
 The sample data already includes the annotations, so after viewing, simply press `q` to close the GUI.
 
-Please note that no clicks should occur outside of the image.
+Please note that no clicks should occur outside of the image to prevent GUI errors.
 
 **Command line parameters:**
 - `-p` or `--data_root`: Path to the data folder (default: `data/processed`)
