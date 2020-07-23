@@ -13,7 +13,7 @@ This repo provides the code for the computer vision/deep learning pipeline used 
 - Matplotlib 3.1.3
 - [FFmpeg](https://ffmpeg.org/)
 
-The complete list of required packages (besides FFmpeg) provided in *requirements.txt*, which you can install in your environment with the command `pip install -r requirements.txt`. Setting up a Python virtual environment, such as [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html), is highly recommended.
+The complete list of required packages (besides FFmpeg) provided in *requirements.txt*, which you can install in your environment with the command `pip install -r requirements.txt`. Setting up a Python virtual environment, such as [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) with [pip], is highly recommended.
 
 <!-- ----------------------------------------------------------------------- -->
 
@@ -22,10 +22,14 @@ The complete list of required packages (besides FFmpeg) provided in *requirement
 This is a semi-automatic process that uses Otsu’s adaptive thresholding, morphological transformations, and connected components to detect individual bees in the frames. Bees that are in clusters (i.e. touching or overlapping with one another) are detected as clusters of various sizes.
 
 ### Input:
-Images of frames extracted from video. Images should be stored in *data/processed/{folder_name}/{frames_folder_name}/*. A small dataset is provided [here](https://drive.google.com/drive/folders/1adOMmJc2hFB4eaDnGkpJkUybTysl3bRh?usp=sharing), and should be unzipped and placed in *data/processed/*. Inside the dataset folder, *denoised_frames/* holds the images from a short video. There is also a folder *UI_annotation_history* that holds sample data for the annotation desribed below.
+Images of frames extracted from video. Images should be stored in *data/processed/{folder_name}/{frames_folder_name}/*. A small dataset is provided [here](https://drive.google.com/drive/folders/1adOMmJc2hFB4eaDnGkpJkUybTysl3bRh?usp=sharing), and should be unzipped and placed in *data/processed/*. Inside the dataset folder, *denoised_frames/* holds the images from a short video. There is also a folder *UI_annotation_history* that holds sample data for the annotation described below.
 
 ### Usage:
 **`python step_1__run_detection.py`** takes in the (preprocessed) frame images from a chosen data folder and launches an interactive GUI with one frame (i.e. the first frame) and allows the user to click on centers of individual bees that are expected to be detected as individuals. Bees that touch or overlap one another should not be labeled and will be automatically detected as clusters. See example below for the GUI and bees that should be labeled (green dots). After the user finishes labeling this frame, the algorithm will use the labels to search for parameters that will maximize accuracy of the algorithm's predictions checked against the user-provided labels. The best parameters are then used to automatically process the rest of the frames to detect individual bees and bees in clusters.
+
+The sample data already includes the annotations, so after viewing, simply press `q` to close the GUI.
+
+Please note that no clicks should occur outside of the image.
 
 **Command line parameters:**
 - `-p` or `--data_root`: Path to the data folder (default: `data/processed`)
@@ -114,7 +118,7 @@ The trained model (.pt file) should be placed in *orientation_estimation/saved_m
 In the data folder for this specific movie, *data_log_orientation.json* will be created from this step. This builds upon *data_log.json* and *data_log_orientation.json* and adds an 'orientation' angle to each bee in each frame.
 
 ### To retrain model:
-Training data should be in *data/training_data/orientation_estimation*. Sample labeled data is provided [here](https://drive.google.com/open?id=11t5OYkj43LwlPKBGpeGw4E4OeKpwfopD).
+Training data should be in *data/training_data/orientation_estimation*. Sample labeled data is provided [here](https://drive.google.com/drive/folders/1f-nKt3Cy5w9SyTvO-l4fMPOKoFKRSB2e?usp=sharing).
 
 Navigate to *orientation_estimation* and run **`python train_orientation_estimator.py`**. Trained models will be stored in *saved_models*. At the end of training, evaluation plots (training curves, degree tolerance) will be made and stored in *eval_visualization*.
 
