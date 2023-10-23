@@ -91,7 +91,7 @@ class CustomLastLayer(nn.Module):
 
 def build_resnet(num_classes):
     print(f"Building resnet-18 with {num_classes} class(es).")
-    resnet = torchvision.models.resnet18(pretrained=True)
+    resnet = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
     num_ftrs = resnet.fc.in_features
     resnet.fc = nn.Sequential(
                 nn.Linear(num_ftrs, num_classes),

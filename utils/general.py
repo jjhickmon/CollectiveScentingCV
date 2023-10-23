@@ -45,6 +45,7 @@ def log_data(data_logger, x,y,w,h,group):
 
 def select_file(src_video_root, max_failed_attempts=3, prefix=''):
     src_video_paths = glob.glob(f'{src_video_root}/*{prefix}')
+    src_video_paths.sort()
 
     for src_video_path_i, src_video_path in enumerate(src_video_paths):
         print(f"{src_video_path_i} : {os.path.basename(src_video_path)}")

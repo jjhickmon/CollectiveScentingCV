@@ -66,7 +66,7 @@ def apply_augmentations(AUGMENTATION):
 
 def build_resnet(num_classes, dropout=0.0):
     print(f"\nBuilding resnet-18 with {num_classes} classes.")
-    resnet = torchvision.models.resnet18(pretrained=True)
+    resnet = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
     num_ftrs = resnet.fc.in_features
     resnet.fc = nn.Sequential(
         nn.Dropout(dropout),

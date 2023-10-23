@@ -14,7 +14,7 @@ def frame2vid(framedir, outdir, args):
     # Create command
     cmd = f"ffmpeg {overwrite_str} -loglevel {loglevel} "
     cmd += f'-framerate {args.FPS} -i {inpath}_%05d.png '
-    cmd += f'-c:v libx264 -s 1500x1500 -pix_fmt yuv420p {outpath}'
+    cmd += f'-c:v libx264 -pix_fmt yuv420p {outpath}'
     cmd = [ele for ele in cmd.split(" ") if ele]
 
     # Run process
@@ -39,6 +39,7 @@ def vid2frames(src_video_path, raw_frames_dir, args):
 
     cmd += f"-vf fps={args.FPS} {outpath}_%05d.png"
     cmd = [ele for ele in cmd.split(" ") if ele]
+    print("Running command: ", cmd)
     process = subprocess.Popen(cmd)
     process.wait()
     print("\nDone.")

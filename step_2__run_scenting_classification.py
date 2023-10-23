@@ -27,15 +27,16 @@ import scenting_classification.modules.DataSamplers as DataSamplers
 import scenting_classification.modules.EvaluationUtils as Evaluation
 
 import utils.general as general_utils
+from tqdm import tqdm
 
 def build_resnet(num_classes):
     print(f"Building resnet-18 with {num_classes} classes...")
-    resnet = torchvision.models.resnet18(pretrained=True)
+    resnet = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
     num_ftrs = resnet.fc.in_features
     resnet.fc = nn.Linear(num_ftrs, num_classes)
     return resnet
 
-def predict(bee_data, data_loader, model, device, batch_size):
+def predict(bee_data, num_bees, data_loader, model, device, batch_size):
     classifications = list(np.zeros(len(bee_data.data_df)))
     counter = 0
     try:
@@ -49,10 +50,27 @@ def predict(bee_data, data_loader, model, device, batch_size):
             logits = model(X)
             preds = Utils.get_prediction(logits)
             pred_strings = Utils.get_labels(bee_data, preds)
-
+            # print(X)
+            # print(pred_strings)
+            # print(frame, experiment, crop)
+            non_scenting_frame = -1
+            switch_to_non_scenting = False
             for img_i in range(batch_size):
                 if counter < len(bee_data.data_df):
                     classifications[counter] = pred_strings[img_i]
+                    # # only switch to non-scenting if bee has not been scenting for 10 frames
+                    # if img_i > num_bees and pred_strings[img_i] == 'non_scenting' and classifications[counter - num_bees] == 'scenting':
+                    #     if not switch_to_non_scenting:
+                    #         switch_to_non_scenting = True
+                    #         non_scenting_frame = counter
+                    #         classifications[counter] = 'scenting'
+                    #     elif counter % num_bees == non_scenting_frame % num_bees and counter - non_scenting_frame >= num_bees*3:
+                    #         classifications[counter] = pred_strings[img_i]
+                    #         switch_to_non_scenting = False
+                    #     else:
+                    #         classifications[counter] = 'scenting'
+                    # else:
+                    #     classifications[counter] = pred_strings[img_i]
                     counter += 1
     except KeyboardInterrupt:
         print('\nEnding early.')
@@ -70,15 +88,18 @@ def setup_args():
     parser = argparse.ArgumentParser(description='Classify scenting bees!')
     parser.add_argument('-p', '--data_root', dest='data_root', type=str, default='data/processed')
     parser.add_argument('-m', '--model_file', dest='model_file', type=str, default='ResnetScentingModel.pt')
-    parser.add_argument('-b', '--batch_size', dest='batch_size', type=int, default=32)
+    parser.add_argument('-b', '--batch_size', dest='batch_size', type=int, default=2)
     parser.add_argument('-c', '--num_classes', dest='num_classes', type=int, default=2)
     args = parser.parse_args()
     return args
 
 def main(args):
+    print("-- Select root folder from list...")
+    src_processed_root = general_utils.select_file(args.data_root)
+
     # Select the video
     print("-- Select video from list...")
-    src_processed_root = general_utils.select_file(args.data_root)
+    video_root = general_utils.select_file(src_processed_root)
     print(f'\nProcessing video: {src_processed_root}')
 
     print("\n---------- Classifying scenting bees ----------")
@@ -86,10 +107,26 @@ def main(args):
     load_path = f'scenting_classification/saved_models/{args.model_file}'
 
     # Obtain up paths for video folder
+    # folder_paths = [src_processed_root]
+    # json_paths = sorted([os.path.join(folder, f'data_log.json') for folder in folder_paths])
     vid_name = src_processed_root.split('/')[-1]
     folder_paths = glob.glob(f'{args.data_root}/{vid_name}*')
     json_paths = sorted([os.path.join(folder, f'data_log.json') for folder in folder_paths])
     frames_path = f'denoised_frames/'
+    if not os.path.exists(f'{src_processed_root}/{frames_path}'):
+        print("Splitting video into frames...")
+        os.makedirs(f'{src_processed_root}/{frames_path}')
+        cap = cv2.VideoCapture(video_root)
+        length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        i = 1
+
+        # with tqdm(total=length, desc='Exporting Frames') as pbar:
+        #     while(cap.isOpened()):
+        for frame_num in tqdm(range(length), desc='Exporting Frames'):
+            ret, frame = cap.read()
+            if ret == False:
+                break
+            cv2.imwrite(f'{src_processed_root}/{frames_path}/frame_{frame_num+1:05d}.png', frame)
 
     # ------------------------------------------------------------- #
     ##### DATASET & TRANSFORMS ######
@@ -100,6 +137,8 @@ def main(args):
     print(f'Setting up data handler...')
     bee_data = DataHandler.BeeDataset_2(args.data_root, json_paths, frames_path,
                           baseline_transforms, augment_transforms=None, mode='eval')
+    # NOTE: May be a better way to do this
+    num_bees = len(list(json.load(open(f"{src_processed_root}/data_log.json")).values())[0])
     print(f'Number of bee images to process: {len(bee_data)}\n')
 
     # ------------------------------------------------------------- #
@@ -130,7 +169,7 @@ def main(args):
     # ------------------------------------------------------------- #
     ###### RUN TRAINED MODEL ######
     print(f"Classifying bee images as scenting/non-scenting...")
-    classifications = predict(bee_data, data_loader, model, device, batch_size)
+    classifications = predict(bee_data, num_bees, data_loader, model, device, batch_size)
 
     # ------------------------------------------------------------- #
     ###### SAVED OUTPUT DATA ######

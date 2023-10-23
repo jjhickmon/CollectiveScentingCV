@@ -31,7 +31,7 @@ import utils.general as general_utils
 
 def build_resnet(num_classes=1):
     print(f"Building resnet-18 with {num_classes} class(es)...")
-    resnet = torchvision.models.resnet18(pretrained=True)
+    resnet = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
     num_ftrs = resnet.fc.in_features
     resnet.fc = nn.Sequential(
         nn.Linear(num_ftrs, num_classes),
@@ -95,7 +95,7 @@ def main(args):
     print("\n---------- Estimating bee orientations ----------")
     # Obtain up paths for video folder
     vid_name = src_processed_root.split('/')[-1]
-    folder_paths = glob.glob(f'{args.data_root}/{vid_name}*')
+    folder_paths = glob.glob(f'{args.data_root}/{vid_name}')
     json_paths = sorted([os.path.join(folder, f'data_log_scenting.json') for folder in folder_paths])
     frames_path = f'denoised_frames/'
 

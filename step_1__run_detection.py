@@ -211,6 +211,8 @@ def main(UI, args):
     # Read in frames
     print("\n-- Reading in frames...")
     denoised_filepaths = read_in_frames(src_processed_root)
+    print(src_processed_root)
+    print(denoised_filepaths)
 
     # User interface for selecting proper stuff...
     # Pick an image somewhere in middle of video - x seconds in
