@@ -12,16 +12,15 @@ MAX_AUTOMATIC_ITERATIONS = 15
 WINDOW_NAME = "frame"
 MANUAL_WINDOW_NAME = "manual point select - press ENTER to continue"
 FRAMES_PATH = "denoised_frames"
-MIN_BEE_AREA = 30
+MIN_BEE_AREA = 80
 MAX_BEE_AREA = 1500
-# MIN_GROUP_AREA = 200
-MAX_MOVE_DISTANCE = 100
+MIN_GROUP_AREA = 100
 MAX_GROUP_AREA = 5000
-MAX_THRESH_COLOR_DIFF = 20
+MAX_MOVE_DISTANCE = 100
+MAX_THRESH_COLOR_DIFF = 30
 COLORS = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255,255,0), (0,255,255), (255,0,255), (255,255,255)]
 
-NUM_BEES = 4 # NOTE: Important: update this value
-TEST = False
+NUM_BEES = 2
 
 def imgs2vid(imgs, outpath, fps):
     ''' Stitch together frame imgs to make a movie. '''
@@ -35,8 +34,17 @@ def imgs2vid(imgs, outpath, fps):
     cv2.destroyAllWindows()
     video.release()
 
+def get_contour_center(contour):
+    bee_moment = cv2.moments(contour)
+    if bee_moment["m00"] == 0:
+        return None
+    cX = int(bee_moment["m10"] / bee_moment["m00"])
+    cY = int(bee_moment["m01"] / bee_moment["m00"])
+    center = (cX, cY)
+    return center
+
 def preprocess(frame, background):
-    n = float(1.1)
+    n = float(3.0)
     img = cv2.multiply(frame, np.array([n]))
     img_background = cv2.multiply(background, np.array([n]))
 
@@ -44,24 +52,15 @@ def preprocess(frame, background):
     background_sub = cv2.cvtColor(cv2.absdiff(img, img_background), cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(background_sub, (25, 25), 0) # blur to quickly denoise, precision is not important for this step
     # multiplied = cv2.multiply(blurred, np.array([2.0]))
-    _, threshold = cv2.threshold(blurred,thresh=45,maxval=255,type=cv2.THRESH_BINARY)
-    queen_cage = [np.array([[493, 35], [555, 35], [570, 410], [508, 410]])]
-    threshold = cv2.fillPoly(threshold, queen_cage, 0) # queen cage, points are clockwise from top left
-
+    _, threshold = cv2.threshold(blurred,thresh=35,maxval=255,type=cv2.THRESH_BINARY)
     # opening = cv2.morphologyEx(threshold, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=3)
     # cv2.waitKey(0)
-    closing = cv2.morphologyEx(threshold, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=8)
-    erode = cv2.erode(closing, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=1)
-    dilate = cv2.dilate(erode, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (4, 4)), iterations=3)
-    # closing2 = cv2.morphologyEx(dilate, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=2)
-    if TEST:
-        dilate = cv2.dilate(dilate, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)), iterations=2)
-
-    dilate = cv2.fillPoly(dilate, queen_cage, 0) # queen cage, points are clockwise from top left
-    frame = cv2.fillPoly(frame, queen_cage, 0) # queen cage, points are clockwise from top left
-    # cv2.rectangle(closing, (485, 35, 90, 375), 0, -1) # queen cage
-    cv2.rectangle(dilate, (410, 1000, 50, 100), 0, -1) # random artifact
-    cv2.rectangle(dilate, (1200, 0, 300, 30), 0, -1) # random artifact
+    erode = cv2.erode(threshold, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=2)
+    dilate = cv2.dilate(erode, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=8)
+    # closing = cv2.morphologyEx(dilate, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=8)
+    # dilate = cv2.dilate(closing, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2)), iterations=5)
+    cv2.rectangle(dilate, (500, 30, 75, 370), 0, -1)
+    cv2.rectangle(dilate, (1245, 105, 20, 20), 0, -1) # random artifact
     cv2.imshow("thresh", dilate)
     return dilate, background_sub
 
@@ -102,54 +101,57 @@ def form_contours(image, minArea, maxArea, remove_background=False, remove_extra
 
 def match_track_labels(tracks, prev_tracks):
     print("prev", [final_track["labels"] for final_track in prev_tracks] if prev_tracks is not None else [], "tracks", [final_track["labels"] for final_track in tracks])
-    cv2.waitKey(0)
+    # cv2.waitKey(0) # TODO: for new structure, testing frames
     # labels = [] # NOTE: test
-    if prev_tracks is not None and (len(prev_tracks) > len(tracks) or len(prev_tracks) < len(tracks)): # if a group has been formed, i.e. no longer 1:1 matching
+    if prev_tracks is not None: # if a group has been formed, i.e. no longer 1:1 matching
         print("matching tracks", len(tracks), len(prev_tracks))
-        checked = []
-        num_labels = 0
-        for prev_track in prev_tracks:
-            current_tracks = list(filter(lambda i: i not in checked, tracks)) # TODO: fix this
-            while len(current_tracks) > 1:
-                current_tracks = list(filter(lambda i: i not in checked, tracks))
-                group_track = sorted(current_tracks, key=lambda track: cv2.norm(np.array(track["center"]) - np.array(prev_track["center"])))[0]
-                if cv2.norm(np.array(group_track["center"]) - np.array(prev_track["center"])) < MAX_MOVE_DISTANCE:
-                    group_track["labels"].extend(prev_track["labels"])
+        current_tracks = None
+        unmatched_tracks = None
+        # NOTE: ideally there would always be 1:1 matching, but sometimes a group is split or a group is formed even with the watershed algorithm
+        if len(prev_tracks) > len(tracks): # if a group was formed, just match to whatever's closest, i.e. 1:n matching
+            current_tracks =  prev_tracks
+            unmatched_tracks = tracks.copy()
+        elif len(prev_tracks) == len(tracks): # if a group was split or nothing changed, match to whatever's closest and not already matched, i.e. n:1 or 1:1 matching
+            current_tracks = tracks
+            unmatched_tracks = prev_tracks.copy()
+        else:
+            # NOTE: if a group was split that is the worst case scenario, because we cannot tell which bees belong to which group
+            # TODO: add manual matching
+            print("Error: prev_tracks should never be less than tracks")
+            return tracks
 
-                    num_labels += 1
-                    break
-                else:
-                    print("distance2")
-                checked.append(group_track)
-        if len(prev_tracks) < len(tracks):
-            print("less")
-            for track in tracks:
-                if track not in checked:
-                    track["labels"].append(num_labels)
-                    num_labels += 1
+        for current_track in current_tracks:
+            closest_track = sorted(unmatched_tracks, key=lambda track: cv2.norm(np.array(track["center"]) - np.array(current_track["center"])))[0]
+            if len(prev_tracks) > len(tracks):
+                closest_track["labels"].extend(current_track["labels"])
+            if len(prev_tracks) == len(tracks): # if a group wasn't formed, i.e. n:1 or 1:1 matching
+                current_track["labels"].extend(closest_track["labels"])
+                unmatched_tracks.remove(closest_track)
+        print("test", [final_track["labels"] for final_track in tracks])
 
             # labels.extend(prev_track["labels"])
     # TODO: match based on closest contour point not contour centers. More accurate for groups of more than one bee
-    elif prev_tracks is not None and len(prev_tracks) == len(tracks): # if a group wasn't formed, i.e. 1:1 matching
-        print("equal")
-        matched = []
-        for track in tracks:
-            checked = []
-            current_prev_tracks = list(filter(lambda i: i not in checked, prev_tracks))
+    # TODO: testing if this is necessary
+    # elif prev_tracks is not None and len(prev_tracks) == len(tracks): # if a group wasn't formed, i.e. 1:1 matching
+    #     print("equal")
+    #     matched = []
+    #     for track in tracks:
+    #         checked = []
+    #         current_prev_tracks = list(filter(lambda i: i not in checked, prev_tracks))
 
-            while len(current_prev_tracks) > 1:
-                prev_tracks_new = filter(lambda i: i not in matched, prev_tracks)
-                current_prev_tracks = list(filter(lambda i: i not in checked, prev_tracks_new))
-                closest_track = sorted(current_prev_tracks, key=lambda prev_track: cv2.norm(np.array(prev_track["center"]) - np.array(track["center"])))[0]
-                if cv2.norm(np.array(closest_track["center"]) - np.array(track["center"])) < MAX_MOVE_DISTANCE:
-                    track["labels"] = closest_track["labels"]
-                    print("test", track["labels"])
-                    # labels.extend(track["labels"])
-                    matched.append(closest_track)
-                    break
-                else:
-                    print("distance")
-                    checked.append(closest_track)
+    #         while len(current_prev_tracks) > 1:
+    #             prev_tracks_new = filter(lambda i: i not in matched, prev_tracks)
+    #             current_prev_tracks = list(filter(lambda i: i not in checked, prev_tracks_new))
+    #             closest_track = sorted(current_prev_tracks, key=lambda prev_track: cv2.norm(np.array(prev_track["center"]) - np.array(track["center"])))[0]
+    #             if cv2.norm(np.array(closest_track["center"]) - np.array(track["center"])) < MAX_MOVE_DISTANCE:
+    #                 track["labels"] = closest_track["labels"]
+    #                 print("test", track["labels"])
+    #                 # labels.extend(track["labels"])
+    #                 matched.append(closest_track)
+    #                 break
+    #             else:
+    #                 print("distance")
+    #                 checked.append(closest_track)
              # TODO: test new structure (uncomment this and remove the above for new structure)
             # closest_track = sorted(prev_tracks, key=lambda prev_track: cv2.norm(np.array(prev_track["center"]) - np.array(track["center"])))[0]
             # track["labels"] = closest_track["labels"]
@@ -173,14 +175,7 @@ def create_tracks(contours, prev_tracks):
     tracks = []
     assert not len(contours) == 0
     for i, contour in enumerate(contours):
-        moment = cv2.moments(contour)
-        if moment["m00"] == 0:
-            continue # TODO: I'm not sure if I should skip this or not
-        cX = int(moment["m10"] / moment["m00"])
-        cY = int(moment["m01"] / moment["m00"])
-        track_center = (cX, cY)
-
-        # TODO: Maybe change initial labelling to be proximity to queen
+        track_center = get_contour_center(contour)
         track = {"labels": [], "center": track_center, "contour": contour}
         tracks.append(track)
 
@@ -256,11 +251,11 @@ def manual_segmentation(frame, processed, background_sub, manual_group_track):
     update_manual_frame(frame, processed, background_sub, points, manual_group_track)
     while(1):
         # mask = np.copy(dilate)
-        cv2.setMouseCallback(MANUAL_WINDOW_NAME, on_click, [frame, processed, background_sub, points, label, manual_group_track])
+        cv2.setMouseCallback(MANUAL_WINDOW_NAME, on_click, [frame, processed, background_sub, points, manual_group_track])
         cv2.imshow(MANUAL_WINDOW_NAME, manual_frame)
         k = cv2.waitKey(30) & 0xFF
         # print("key pressed: ", k)
-        if ALLOW_MANUAL_LABELLING:
+        if ALLOW_MANUAL_LABELLING: # TODO: implement this
             for num_key_code in range(48,58):
                 if k == num_key_code:
                     label = k - 48
@@ -301,30 +296,26 @@ def manual_segmentation(frame, processed, background_sub, manual_group_track):
     # cv2.waitKey(0)
     return points, manual_mask
 
-def split_groups(frame, background_sub, tracks, prev_tracks):
+def split_groups(frame, background_sub, groups, prev_tracks):
     visualization = np.copy(frame)
-    tracks2 = []
+    final_split_tracks = []
     # Split groups
     # TODO: testing new structure
-    for group_track in tracks:
+    for group_track in groups:
         processed = np.zeros((frame.shape[0], frame.shape[1]), dtype=np.uint8)
         processed = cv2.drawContours(processed, [group_track["contour"]], -1, (255, 255, 255), -1)
 
-        assert group_track in tracks
         # Get the individual tracks that are apart of the group
+        # NOTE: This is needed so we can isolate the bees that are apart of the group
         prev_unmerged_tracks = []
-        # print("prev_tracks", len(prev_tracks), "tracks", len(tracks))
         for prev_track in prev_tracks:
             if not len(prev_track["labels"]) == 0 and set(prev_track["labels"]).issubset(group_track["labels"]):
                 prev_unmerged_tracks.append(prev_track)
-        # print("prev", len(prev_unmerged_tracks), len(group_track["labels"]), group_track["labels"])
-
-        # cv2.drawContours(frame, [group_track["contour"]], -1, COLORS[0], 2)
 
         if not len(processed.shape) == 3:
             processed = cv2.cvtColor(processed, cv2.COLOR_GRAY2BGR)
 
-        # Get the colors of the bees in the group
+        # Get the colors of the bees in the group for color thresholding
         point_colors = []
         points = []
         for prev_unmerged_track in prev_unmerged_tracks:
@@ -343,6 +334,7 @@ def split_groups(frame, background_sub, tracks, prev_tracks):
         correct_num_bees = False
         reset_group = False
         iteration = 0
+        # Either iteratively color threshold or manually segment until the correct number of bees are found
         while not correct_num_bees:
             visualization = np.copy(frame)
             cv2.circle(visualization, group_track["center"], 5, (0, 0, 255), -1)
@@ -359,16 +351,15 @@ def split_groups(frame, background_sub, tracks, prev_tracks):
             bee_contours = form_contours(edges, MIN_BEE_AREA, MAX_BEE_AREA, remove_background=True, remove_extra_contours=False)
 
             cv2.drawContours(visualization, bee_contours, -1, (0, 255, 0), 2)
-            # cv2.imshow('frame5', visualization)
-            # cv2.waitKey(0)
             for point in points:
                 cv2.circle(visualization, point, 5, (0, 0, 255), -1)
             visualization = cv2.bitwise_or(cv2.multiply(mask, np.array([.4])), cv2.multiply(visualization, np.array([.7])))
 
+            # Iteratively color threshold until the correct number of bees are found or the max number of iterations is reached
             if iteration == MAX_AUTOMATIC_ITERATIONS:
                 if not len(bee_contours) == len(group_track["labels"]) and ALLOW_MANUAL_SEGMENTING:
                     print("Error: Number of contours found is not ", len(group_track["labels"]), "number of contours found: ", len(bee_contours))
-                    global_group_track = group_track
+                    # global_group_track = group_track
                     custom_points, custom_mask = manual_segmentation(frame, processed, background_sub, group_track)
                     reset_group = len(custom_points) == 0
                     points = custom_points
@@ -376,7 +367,6 @@ def split_groups(frame, background_sub, tracks, prev_tracks):
                 elif not len(bee_contours) == len(group_track["labels"]) and not ALLOW_MANUAL_SEGMENTING:
                     reset_group = True
             else:
-                # print("iteration: ", iteration, "number of contours found: ", len(bee_contours))
                 color_thresh = np.zeros((frame.shape[0], frame.shape[1]), dtype=np.uint8)
                 for point_color in point_colors:
                     color_thresh = cv2.bitwise_or(color_thresh, color_threshold(background_sub, point_color, MAX_THRESH_COLOR_DIFF - iteration))
@@ -391,39 +381,22 @@ def split_groups(frame, background_sub, tracks, prev_tracks):
             if reset_group:
                 break
 
-        # print("correct_num_bees=", correct_num_bees, "reset_group=", reset_group)
         if correct_num_bees and not reset_group:
+            # cv2.drawContours(visualization, bee_contours, -1, (0, 255, 0), 2)
+            # cv2.imshow('frame5', visualization)
+            # cv2.waitKey(0)
             separated_tracks = []
             for bee_contour in bee_contours:
-                # Match contour to track
-                bee_moment = cv2.moments(bee_contour)
-                if bee_moment["m00"] == 0:
-                    continue
-                cX = int(bee_moment["m10"] / bee_moment["m00"])
-                cY = int(bee_moment["m01"] / bee_moment["m00"])
-                bee_center = (cX, cY)
-
-                # match = sorted(prev_unmerged_tracks, key=lambda prev_unmerged_track: cv2.norm(np.array(prev_unmerged_track["center"]) - np.array(bee_center)))[0]
-                # unmerged_track = {"labels": match["labels"], "center": bee_center, "contour": bee_contour}
+                bee_center = get_contour_center(bee_contour)
                 separated_track = {"labels": [], "center": bee_center, "contour": bee_contour}
                 separated_tracks.append(separated_track)
-            # print(group_track["labels"], len(separated_tracks), len(prev_unmerged_tracks))
-            # assert len(separated_tracks) == len(group_track["labels"]) == len(prev_unmerged_tracks)
 
             # TODO: testing new structure (comment this and uncomment below for new structure)
-            tracks2 = match_track_labels(separated_tracks, prev_unmerged_tracks)
-            if group_track in tracks: # TODO: double check if necessary
-                tracks.remove(group_track)
-                tracks.extend(tracks2)
-
-            # if group_track in tracks: # TODO: double check if necessary
-            #     tracks.remove(group_track)
-            #     tracks.extend(separated_tracks)
-        # frame2 = draw_tracks(frame, tracks2)
-        # cv2.imshow('frame2', frame2)
-        # cv2.waitKey(0)
-
-    return visualization, tracks
+            # NOTE: this should always be a 1:1 matching if watershed was successful
+            print("test", len(separated_tracks), len(prev_unmerged_tracks))
+            labelled_separated_tracks = match_track_labels(separated_tracks, prev_unmerged_tracks)
+            final_split_tracks.extend(labelled_separated_tracks)
+    return final_split_tracks, visualization
 
 if __name__ == "__main__":
     print("select root folder...")
@@ -453,15 +426,14 @@ if __name__ == "__main__":
 
         # Pass in MAX_GROUP_AREA in case groups were formed
         contours = form_contours(processed, MIN_BEE_AREA, MAX_GROUP_AREA, remove_background=False, remove_extra_contours=True)
-        print("contours", len(contours))
-        test_frame = cv2.drawContours(frame, contours, -1, (255, 255, 255), 2)
-        cv2.imshow("test", test_frame)
+        # TODO: test new structure, testing contours
+        # test_frame = cv2.drawContours(frame, contours, -1, (255, 255, 255), 2)
+        # cv2.imshow("test", test_frame)
         # print("contours formed", len(contours))
         if len(contours) == 0:
             print("Warning: No contours were created")
             continue
         tracks = create_tracks(contours, prev_tracks)
-        print("tracks", len(tracks))
         if len(tracks) == 0:
             print("Warning: No tracks were created")
             continue
@@ -471,36 +443,35 @@ if __name__ == "__main__":
         groups = [track for track in tracks if len(track["labels"]) > 1]
         if len(groups) >= 1:
             print("group")
-            # for group in groups:
-            #     print(group["labels"])
-            # print("")
-        if ALLOW_MANUAL_SEGMENTING and prev_tracks is not None:
+            for group in groups:
+                print(group["labels"])
+            print("")
+
+        # Split the groups and update the tracks
+        if ALLOW_MANUAL_SEGMENTING and (prev_tracks is not None) and len(groups) >= 1:
             # frame, split_tracks = split_groups(frame, background_sub, tracks, prev_tracks)
             # TODO: test new structure (uncomment above and comment below for new structure)
-            frame, split_tracks = split_groups(frame, background_sub, tracks, groups)
-        else:
-            split_tracks = tracks
-        print("split_tracks", len(split_tracks))
-        split_tracks = match_track_labels(split_tracks, prev_tracks)
-        # frame = draw_tracks(frame, split_tracks, show_area=True)
-        frame = draw_tracks(frame, groups) # TODO: test new structure comment this and uncomment above for new structure
+            split_tracks, frame = split_groups(frame, background_sub, groups, prev_tracks)
+            for group in groups:
+                tracks.remove(group)
+            tracks.extend(split_tracks)
+        # split_tracks = match_track_labels(split_tracks, prev_tracks)
+        frame = draw_tracks(frame, tracks, show_area=False)  # TODO: test new structure comment this and uncomment above for new structure
 
         # draw_tracks(frame, split_tracks)
         cv2.imshow(WINDOW_NAME, frame)
 
         annotated_frames.append(frame)
         data_log[f"frame_{len(annotated_frames):05d}"] = []
-        for split_track in split_tracks:
-            x,y,w,h = cv2.boundingRect(split_track["contour"])
+        for track in tracks:
+            x,y,w,h = cv2.boundingRect(track["contour"])
             # group = False
-            group = split_track in groups #TODO: test new structure (comment this and uncomment above for new structure)
-            data = { "label": str(split_track["labels"]).replace('[','').replace(']',''), "x": x, "y": y, "h": h, "w": w, "id": "individual" if not group else "cluster" }
+            # Note: this will always be false if watershed was successful
+            isgroup = track in groups #TODO: test new structure (comment this and uncomment above for new structure)
+            data = { "label": str(track["labels"]).replace('[','').replace(']',''), "x": x, "y": y, "h": h, "w": w, "id": "individual" if not isgroup else "cluster" }
             data_log[f"frame_{len(annotated_frames):05d}"].append(data)
-        if split_tracks is not None and not len(split_tracks) == 0: # TODO: check if necessary
-            prev_tracks = split_tracks
-        else:
-            prev_tracks = tracks
-        # print("updated prev_tracks", len(prev_tracks))
+
+        prev_tracks = tracks
 
         # NOTE: Pause with space, exit with esc
         k = cv2.waitKey(30) & 0xff
