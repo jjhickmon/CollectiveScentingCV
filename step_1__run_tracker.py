@@ -3,7 +3,7 @@ import numpy as np
 import json
 import utils.general as general_utils
 import os
-from settings import COLORS
+from utils.settings import COLORS
 
 VIDEO_NAME = ""
 BACKGROUND_NAME = ""

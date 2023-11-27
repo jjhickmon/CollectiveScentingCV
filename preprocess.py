@@ -1,8 +1,5 @@
 import cv2
 import numpy as np
-import os
-# opening, binary_erosion, binary_opening, binary_closing
-import skimage.morphology as morphology
 import utils.general as general_utils
 from tqdm import tqdm
 
@@ -47,21 +44,6 @@ class VideoHandler:
 
         return frame
 
-
-# def source_img_preprocessing(img_src_BGR):
-#     # Convert to gray-scale
-#     img_GRAY = cv2.cvtColor(img_src_BGR, cv2.COLOR_BGR2GRAY)
-
-#     # Make copy of source image
-#     img_GRAY = remove_lines(img_GRAY)
-#     BGR_img = remove_lines_BGR(img_src_BGR)
-
-#     # Initialize the overlay image
-#     overlay_img_src = np.copy(BGR_img)
-
-#     return img_GRAY, overlay_img_src
-
-
 def remove_lines(gray):
     rowvals = np.mean(np.sort(gray, axis=1)[:, -100:], axis=1)
     graymod = np.copy(gray).astype(float)
@@ -89,8 +71,6 @@ def process_video(video_path):
     with tqdm(total=int(vid.cap.get(cv2.CAP_PROP_FRAME_COUNT))) as pbar:
         for img_BGR in vid:
             overlay_img_src = remove_lines_BGR(img_BGR)
-            # img = morphology_transform(overlay_img_src, "opening")
-            # Run image processing
             images.append(overlay_img_src)
             pbar.update(1)
     frame = images[0]

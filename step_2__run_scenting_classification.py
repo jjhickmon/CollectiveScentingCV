@@ -50,14 +50,13 @@ def predict(bee_data, num_bees, data_loader, model, device, batch_size):
             logits = model(X)
             preds = Utils.get_prediction(logits)
             pred_strings = Utils.get_labels(bee_data, preds)
-            # print(X)
-            # print(pred_strings)
-            # print(frame, experiment, crop)
+
             non_scenting_frame = -1
             switch_to_non_scenting = False
             for img_i in range(batch_size):
                 if counter < len(bee_data.data_df):
                     classifications[counter] = pred_strings[img_i]
+                    # NOTE: Uncomment for data downsampling. Reduces the frequency of scenting classifications switching to non-scenting
                     # # only switch to non-scenting if bee has not been scenting for 10 frames
                     # if img_i > num_bees and pred_strings[img_i] == 'non_scenting' and classifications[counter - num_bees] == 'scenting':
                     #     if not switch_to_non_scenting:
@@ -107,8 +106,6 @@ def main(args):
     load_path = f'scenting_classification/saved_models/{args.model_file}'
 
     # Obtain up paths for video folder
-    # folder_paths = [src_processed_root]
-    # json_paths = sorted([os.path.join(folder, f'data_log.json') for folder in folder_paths])
     vid_name = src_processed_root.split('/')[-1]
     folder_paths = glob.glob(f'{args.data_root}/{vid_name}*')
     json_paths = sorted([os.path.join(folder, f'data_log.json') for folder in folder_paths])
@@ -118,10 +115,7 @@ def main(args):
         os.makedirs(f'{src_processed_root}/{frames_path}')
         cap = cv2.VideoCapture(video_root)
         length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        i = 1
 
-        # with tqdm(total=length, desc='Exporting Frames') as pbar:
-        #     while(cap.isOpened()):
         for frame_num in tqdm(range(length), desc='Exporting Frames'):
             ret, frame = cap.read()
             if ret == False:

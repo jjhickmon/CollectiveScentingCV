@@ -27,7 +27,7 @@ sns.set(style="ticks")
 plt.rcParams["font.family"] = "Arial"
 
 import utils.general as general_utils
-from settings import COLORS
+from utils.settings import COLORS
 
 ###### HELPER FUNCTIONS ######
 def get_wanted_frames(start_frame, end_frame, all_frames):
@@ -120,8 +120,6 @@ def main(args, filter_bees=None):
         frame_img = cv2.imread(frame_path)
         frame_name = frame_path.split('/')[-1].split('.')[0]
         frame_num = int(frame_name.split('_')[-1])
-        # if frame_name not in data_log.keys() and int(frame_num) != 0:
-        #     frame_name = f'frame_{frame_num-1:05d}'
         if frame_name not in data_log.keys():
             continue
 

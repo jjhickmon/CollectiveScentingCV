@@ -1,8 +1,8 @@
-# Collective Olfactory Communication in Honey Bees
+# Honeybee Swarm Dynamics: Investigating the Relationship Between Individual Decision Making and Collective Foraging
 # Computer Vision Pipeline
 
 ## Overview:
-This repo provides the code for the computer vision/deep learning pipeline used to analyze honey bee experimental data in [(Nguyen et al. 2020)](https://www.biorxiv.org/content/10.1101/2020.05.23.112540v1). The pipeline primarily includes dense object detection of individual bees in videos, classification of bees into scenting bees (wide wing angles as primary proxy for scenting), and estimation of the bees' body orientations.
+This repo builds off of the code for the computer vision/deep learning pipeline used to analyze honey bee experimental data in [(Nguyen et al. 2020)](https://www.biorxiv.org/content/10.1101/2020.05.23.112540v1). The pipeline focuses on spatiotemporal consistency when tracking individual bees in videos, classification of bees into scenting bees (wide wing angles as primary proxy for scenting), and estimation of the bees' body orientations.
 
 ## Main requirements (versions tested on):
 - Python 3.6
@@ -15,44 +15,38 @@ This repo provides the code for the computer vision/deep learning pipeline used 
 
 The complete list of required packages (besides FFmpeg) provided in *requirements.txt*, which you can install in your environment with the command `pip install -r requirements.txt`. Setting up a Python virtual environment, such as [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) with `pip`, is highly recommended.
 
+## Note
+The changes have not yet been tested on other devices. Email javonh@cs.washington.edu if there are any issues when using this pipeline.
+Some of the requirements listed in requirements.txt may no longer be needed. Feel free to only install necessary libraries.
+
 <!-- ----------------------------------------------------------------------- -->
 
-## Step 1. Detect bees
+## Step 0. Get background
 
-This is a semi-automatic process that uses Otsu’s adaptive thresholding, morphological transformations, and connected components to detect individual bees in the frames. Bees that are in clusters (i.e. touching or overlapping with one another) are detected as clusters of various sizes.
+Since the background of our video is stationary we utilize a standard method of video background subtraction by defining the background to be the median of each frame. By using this temporal median approach, we can approximate the background pixels and utilize that for background subtraction.
+
+## Step 1. Run tracker
+
+This is a semi-automatic process that uses manual thresholding, morphological transformations, and our custom algorithm to detect individual bees in the frames. Bees that are in clusters (i.e. touching or overlapping with one another) are separated into the individuals that compose the cluster.
 
 ### Input:
 Images of frames extracted from video. Images should be stored in *data/processed/{folder_name}/{frames_folder_name}/*. A small dataset is provided [here](https://drive.google.com/drive/folders/1adOMmJc2hFB4eaDnGkpJkUybTysl3bRh?usp=sharing), and should be unzipped and placed in *data/processed/*. Inside the dataset folder, *denoised_frames/* holds the images from a short video. There is also a folder *UI_annotation_history* that holds sample data for the annotation described below.
 
 ### Usage:
-**`python step_1__run_detection.py`** takes in the (preprocessed) frame images from a chosen data folder and launches an interactive GUI with one frame (i.e. the first frame) and allows the user to click on centers of individual bees that are expected to be detected as individuals. Bees that touch or overlap one another should not be labeled and will be automatically detected as clusters. See example below for the GUI and bees that should be labeled (green dots). After the user finishes labeling this frame, the algorithm will use the labels to search for parameters that will maximize accuracy of the algorithm's predictions checked against the user-provided labels. The best parameters are then used to automatically process the rest of the frames to detect individual bees and bees in clusters.
+**`python step_1__run_tracker.py`** takes in the a video and background image from a chosen data folder and starts running the tracker. The first frame of the video should have no overlapping bees (or the pipeline should be modified to run manual labelling first).
 
-The sample data already includes the annotations, so after viewing, simply press `q` to close the GUI.
+**Steps**
+1. Select the root folder for the video to track.
+2. Select the video within the root folder to analyze
+3. Select the background image which should have been extracted from the video
 
-Please note that no clicks should occur outside of the image to prevent GUI errors.
-
-**Command line parameters:**
-- `-p` or `--data_root`: Path to the data folder (default: `data/processed`)
-- `-r` or `--fps`: Frame per second for output movie (default: `25`)
-- `-l` or `--limit`: Limit of images to process (default: `0`)
-- `-v` or `--verbose`: FFMPEG Verbosity when visualizing (default: `False`)
-- `-f` or `--force`: Force overwrite in data folder (default: `True`)
-- `-c` or `--draw_clusters`: Draw cluster detections (default: `True`)
-- `-t` or `--draw_trash`: Draw trash detections (default: `False`)
-- `-u` or `--prevUI`: Use previous UI results (default: `False`)
-
-Example GUI labeling:
-<p align="center">
-<img src="doc/detection_gui.png" width="600"/>
-<p>
+Files should be structured as follows:
+- data/processed/{root_folder_name}/
+- data/processed/{root_folder_name}/{video_name}
+- data/processed/{root_folder_name}/{background_image_name}
 
 ### Output:
-A folder called *UI_annotation_history* will be made in the data folder to store the annotation history for future uses. After the algorithm detects bees, *data_log.json* will be created and it stores information of all the detected bees: the x, y positions of the bounding box top left corner and the width and height of that box. For visualization, a folder *detection_frames* and movie *detection_movie.mp4* will be created to show the output detections.
-
-Example output frame (green=individuals, purple=clusters):
-<p align="center">
-<img src="doc/example_detections.png" width="500"/>
-<p>
+After the algorithm detects bees, *data_log.json* will be created and it stores information of all the detected bees: the x, y positions of the bounding box top left corner and the width and height of that box. For visualization, a folder *detection_frames* and movie *{VIDEO_NAME}_contours.mp4.mp4* will be created to show the output detections.
 
 <!-- ----------------------------------------------------------------------- -->
 
@@ -156,10 +150,20 @@ The *data_log_orientation.json* from step 3 and the frame images (e.g. *denoised
 ### Output:
 In the data folder for this specific movie, a folder *output_frames* will be created to store the annotated frames and the *output_movie.mp4* will be created to make a movie of all the annotated frames.
 
-Example output frame (green=individuals, purple=clusters):
-<p align="center">
-<img src="doc/example_orientations.png" width="500"/>
-<p>
+<!-- ----------------------------------------------------------------------- -->
+
+## Step 5. Graph data (optional)
+
+Optionally you can graph the data generated from the tracker using matplotlib.
+
+### Input:
+The *data_log.json* and *data_log_scenting.json* are used to generate the graphs. Make sure to select the root directory for the video.
+
+### Usage:
+**`python step_5__graph_data.py`** plots a graph of the data generated.
+
+### Output:
+In the data folder for this specific movie, a graph image will be created.
 
 Reference:
 Nguyen DMT, Iuzzolino ML, Mankel A, Bozek K, Stephens GJ, Peleg O (2020). Flow-Mediated Collective Olfactory
