@@ -1,6 +1,10 @@
 # Honeybee Swarm Dynamics: Investigating the Relationship Between Individual Decision Making and Collective Foraging
 # Computer Vision Pipeline
 
+## Note
+The changes have not yet been tested on other devices. Email javonh@cs.washington.edu if there are any issues when using this pipeline.
+Some of the requirements listed in requirements.txt may no longer be needed. Feel free to only install necessary libraries.
+
 ## Overview:
 This repo builds off of the code for the computer vision/deep learning pipeline used to analyze honey bee experimental data in [(Nguyen et al. 2020)](https://www.biorxiv.org/content/10.1101/2020.05.23.112540v1). The pipeline focuses on spatiotemporal consistency when tracking individual bees in videos, classification of bees into scenting bees (wide wing angles as primary proxy for scenting), and estimation of the bees' body orientations.
 
@@ -14,10 +18,6 @@ This repo builds off of the code for the computer vision/deep learning pipeline 
 - [FFmpeg](https://ffmpeg.org/)
 
 The complete list of required packages (besides FFmpeg) provided in *requirements.txt*, which you can install in your environment with the command `pip install -r requirements.txt`. Setting up a Python virtual environment, such as [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) with `pip`, is highly recommended.
-
-## Note
-The changes have not yet been tested on other devices. Email javonh@cs.washington.edu if there are any issues when using this pipeline.
-Some of the requirements listed in requirements.txt may no longer be needed. Feel free to only install necessary libraries.
 
 <!-- ----------------------------------------------------------------------- -->
 
