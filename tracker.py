@@ -52,14 +52,9 @@ def preprocess(frame, background):
     background_sub = cv2.cvtColor(cv2.absdiff(img, img_background), cv2.COLOR_BGR2GRAY)
     cv2.imshow("bg", background_sub)
     blurred = cv2.GaussianBlur(background_sub, (25, 25), 0) # blur to quickly denoise, precision is not important for this step
-    # multiplied = cv2.multiply(blurred, np.array([2.0]))
     _, threshold = cv2.threshold(blurred,thresh=35,maxval=255,type=cv2.THRESH_BINARY)
-    # opening = cv2.morphologyEx(threshold, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=3)
-    # cv2.waitKey(0)
     erode = cv2.erode(threshold, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=2)
     dilate = cv2.dilate(erode, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=8)
-    # closing = cv2.morphologyEx(dilate, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=8)
-    # dilate = cv2.dilate(closing, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2)), iterations=5)
     cv2.rectangle(dilate, (500, 30, 75, 370), 0, -1)
     cv2.rectangle(dilate, (1245, 105, 20, 20), 0, -1) # random artifact
     cv2.imshow("thresh", dilate)
@@ -73,26 +68,16 @@ def form_contours(image, minArea, maxArea, remove_background=False, remove_extra
     if len(contours) == 0 or len(hierarchy) == 0:
         return contours
     hierarchy = hierarchy[0]
+
     # Remove background and neutral space
-    # bee_contours_idx = []
-    # for i, element in enumerate(hierarchy[0]):
-    #     if element[2] == -1: # If no child, i.e. innermost contour
-    #         bee_contours_idx.append(i)
-    # bee_contours = [unmerged_contours[i] for i in bee_contours_idx]
     if remove_background:
         contours = [contour for i, contour in enumerate(contours) if hierarchy[i][2] == -1]
-    # for contour in contours:
-    #     if cv2.contourArea(contour) < MIN_GROUP_AREA:
-    #         pass
-    #         # print(cv2.contourArea(contour))
-    # print("contours before area filter", len(contours))
 
     prev_num_contours = len(contours)
     contours = [contour for contour in contours if minArea < cv2.contourArea(contour) < maxArea]
     if not prev_num_contours == len(contours):
         print("Warning: Removed contours based on area")
 
-    # print("contours after area filter", len(contours))
     if remove_extra_contours:
         if len(contours) > NUM_BEES:
             diff = len(contours) - NUM_BEES
@@ -101,9 +86,6 @@ def form_contours(image, minArea, maxArea, remove_background=False, remove_extra
     return contours
 
 def match_track_labels(tracks, prev_tracks):
-    print("prev", [final_track["labels"] for final_track in prev_tracks] if prev_tracks is not None else [], "tracks", [final_track["labels"] for final_track in tracks])
-    # cv2.waitKey(0) # TODO: for new structure, testing frames
-    # labels = [] # NOTE: test
     if prev_tracks is not None: # if a group has been formed, i.e. no longer 1:1 matching
         print("matching tracks", len(tracks), len(prev_tracks))
         current_tracks = None
@@ -130,37 +112,6 @@ def match_track_labels(tracks, prev_tracks):
                 unmatched_tracks.remove(closest_track)
         print("test", [final_track["labels"] for final_track in tracks])
 
-            # labels.extend(prev_track["labels"])
-    # TODO: match based on closest contour point not contour centers. More accurate for groups of more than one bee
-    # TODO: testing if this is necessary
-    # elif prev_tracks is not None and len(prev_tracks) == len(tracks): # if a group wasn't formed, i.e. 1:1 matching
-    #     print("equal")
-    #     matched = []
-    #     for track in tracks:
-    #         checked = []
-    #         current_prev_tracks = list(filter(lambda i: i not in checked, prev_tracks))
-
-    #         while len(current_prev_tracks) > 1:
-    #             prev_tracks_new = filter(lambda i: i not in matched, prev_tracks)
-    #             current_prev_tracks = list(filter(lambda i: i not in checked, prev_tracks_new))
-    #             closest_track = sorted(current_prev_tracks, key=lambda prev_track: cv2.norm(np.array(prev_track["center"]) - np.array(track["center"])))[0]
-    #             if cv2.norm(np.array(closest_track["center"]) - np.array(track["center"])) < MAX_MOVE_DISTANCE:
-    #                 track["labels"] = closest_track["labels"]
-    #                 print("test", track["labels"])
-    #                 # labels.extend(track["labels"])
-    #                 matched.append(closest_track)
-    #                 break
-    #             else:
-    #                 print("distance")
-    #                 checked.append(closest_track)
-             # TODO: test new structure (uncomment this and remove the above for new structure)
-            # closest_track = sorted(prev_tracks, key=lambda prev_track: cv2.norm(np.array(prev_track["center"]) - np.array(track["center"])))[0]
-            # track["labels"] = closest_track["labels"]
-
-    # elif prev_tracks is not None and len(prev_tracks) < len(tracks): # if a group wasn't split by watershed but now is separated
-    #     # manually label
-    #     print("greater")
-
     else: # TODO, assign based on min move distance
         for i, track in enumerate(tracks):
             track["labels"].append(i)
@@ -181,7 +132,6 @@ def create_tracks(contours, prev_tracks):
         tracks.append(track)
 
     # Assign Labels
-    # TODO: test new structure (remove this for new structure)
     tracks = match_track_labels(tracks, prev_tracks)
     return tracks
 
@@ -246,8 +196,6 @@ def manual_segmentation(frame, processed, background_sub, manual_group_track):
     global ALLOW_MANUAL_SEGMENTING
     global TEST
     points = []
-    labels = {}
-    label = -1
 
     update_manual_frame(frame, processed, background_sub, points, manual_group_track)
     while(1):
@@ -255,22 +203,13 @@ def manual_segmentation(frame, processed, background_sub, manual_group_track):
         cv2.setMouseCallback(MANUAL_WINDOW_NAME, on_click, [frame, processed, background_sub, points, manual_group_track])
         cv2.imshow(MANUAL_WINDOW_NAME, manual_frame)
         k = cv2.waitKey(30) & 0xFF
-        # print("key pressed: ", k)
-        if ALLOW_MANUAL_LABELLING: # TODO: implement this
-            for num_key_code in range(48,58):
-                if k == num_key_code:
-                    label = k - 48
-            # for i in range()
+
         if k == 2: # left arrow
             MAX_THRESH_COLOR_DIFF = MAX_THRESH_COLOR_DIFF - 1
             print("MAX_THRESH_COLOR_DIFF=",MAX_THRESH_COLOR_DIFF)
-            # mask = cv2.erode(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2)), iterations=1)
-            # print("erode")
         elif k == 3: # right arrow
             MAX_THRESH_COLOR_DIFF = MAX_THRESH_COLOR_DIFF + 1
             print("MAX_THRESH_COLOR_DIFF=",MAX_THRESH_COLOR_DIFF)
-            # mask = cv2.dilate(mask, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2)), iterations=1)
-            # print("dilate")
         elif k == 0: # down arrow
             points = [] # breaking with no points will trigger a reset
             print("reset")
@@ -293,15 +232,12 @@ def manual_segmentation(frame, processed, background_sub, manual_group_track):
                 update_manual_frame(frame, processed, background_sub, points, manual_group_track)
                 print("undo")
 
-    # cv2.imshow('done', manual_mask)
-    # cv2.waitKey(0)
     return points, manual_mask
 
 def split_groups(frame, background_sub, groups, prev_tracks):
     visualization = np.copy(frame)
     final_split_tracks = []
     # Split groups
-    # TODO: testing new structure
     for group_track in groups:
         processed = np.zeros((frame.shape[0], frame.shape[1]), dtype=np.uint8)
         processed = cv2.drawContours(processed, [group_track["contour"]], -1, (255, 255, 255), -1)
@@ -383,16 +319,12 @@ def split_groups(frame, background_sub, groups, prev_tracks):
                 break
 
         if correct_num_bees and not reset_group:
-            # cv2.drawContours(visualization, bee_contours, -1, (0, 255, 0), 2)
-            # cv2.imshow('frame5', visualization)
-            # cv2.waitKey(0)
             separated_tracks = []
             for bee_contour in bee_contours:
                 bee_center = get_contour_center(bee_contour)
                 separated_track = {"labels": [], "center": bee_center, "contour": bee_contour}
                 separated_tracks.append(separated_track)
 
-            # TODO: testing new structure (comment this and uncomment below for new structure)
             # NOTE: this should always be a 1:1 matching if watershed was successful
             print("test", len(separated_tracks), len(prev_unmerged_tracks))
             labelled_separated_tracks = match_track_labels(separated_tracks, prev_unmerged_tracks)
@@ -419,7 +351,7 @@ if __name__ == "__main__":
     prev_tracks = None
     while (cap.isOpened()):
         success, frame = cap.read()
-        # print("start")
+
         if not success:
             break
         raw_frames.append(frame)
@@ -427,8 +359,7 @@ if __name__ == "__main__":
 
         # Pass in MAX_GROUP_AREA in case groups were formed
         contours = form_contours(processed, MIN_BEE_AREA, MAX_GROUP_AREA, remove_background=False, remove_extra_contours=True)
-        # frame2 = cv2.drawContours(frame, contours, -1, (255, 255, 255)) NOTE: for demo
-        # annotated_frames.append(frame2)
+
         if len(contours) == 0:
             print("Warning: No contours were created")
             continue
@@ -438,7 +369,6 @@ if __name__ == "__main__":
             continue
 
         # Create groups
-        # TODO: test new structure (comment this for new structure)
         groups = [track for track in tracks if len(track["labels"]) > 1]
         if len(groups) >= 1:
             print("group")
@@ -454,25 +384,20 @@ if __name__ == "__main__":
             for group in groups:
                 tracks.remove(group)
             tracks.extend(split_tracks)
-        # split_tracks = match_track_labels(split_tracks, prev_tracks)
-        frame = draw_tracks(frame, tracks, show_area=False)  # TODO: test new structure comment this and uncomment above for new structure
 
-        # draw_tracks(frame, split_tracks)
+        frame = draw_tracks(frame, tracks, show_area=False)
         cv2.imshow(WINDOW_NAME, frame)
 
         annotated_frames.append(frame)
         data_log[f"frame_{len(annotated_frames):05d}"] = []
         for track in tracks:
             x,y,w,h = cv2.boundingRect(track["contour"])
-            # group = False
-            # Note: this will always be false if watershed was successful
-            isgroup = track in groups #TODO: test new structure (comment this and uncomment above for new structure)
+            isgroup = track in groups
             data = { "label": str(track["labels"]).replace('[','').replace(']',''), "x": x, "y": y, "h": h, "w": w, "id": "individual" if not isgroup else "cluster" }
             data_log[f"frame_{len(annotated_frames):05d}"].append(data)
 
         prev_tracks = tracks
 
-        # NOTE: Pause with space, exit with esc
         k = cv2.waitKey(30) & 0xff
         if k == 32:
             cv2.waitKey(0)
