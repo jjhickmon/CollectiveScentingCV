@@ -3,6 +3,7 @@ import numpy as np
 import json
 import utils.general as general_utils
 import os
+from settings import COLORS
 
 VIDEO_NAME = ""
 BACKGROUND_NAME = ""
@@ -17,8 +18,7 @@ MAX_BEE_AREA = 1500
 MIN_GROUP_AREA = 100
 MAX_GROUP_AREA = 5000
 MAX_MOVE_DISTANCE = 100
-MAX_THRESH_COLOR_DIFF = 30
-COLORS = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255,255,0), (0,255,255), (255,0,255), (255,255,255)]
+MAX_THRESH_COLOR_DIFF = 60
 
 NUM_BEES = 2
 
@@ -50,6 +50,7 @@ def preprocess(frame, background):
 
     # Background Subtraction
     background_sub = cv2.cvtColor(cv2.absdiff(img, img_background), cv2.COLOR_BGR2GRAY)
+    cv2.imshow("bg", background_sub)
     blurred = cv2.GaussianBlur(background_sub, (25, 25), 0) # blur to quickly denoise, precision is not important for this step
     # multiplied = cv2.multiply(blurred, np.array([2.0]))
     _, threshold = cv2.threshold(blurred,thresh=35,maxval=255,type=cv2.THRESH_BINARY)
@@ -190,16 +191,16 @@ def draw_tracks(frame, tracks, show_label=True, show_area=False):
         if len(track["labels"]) > 1 or len(track["labels"]) == 0:
             color = (180, 180, 180)
         else:
-            color = COLORS[track["labels"][0] % len(COLORS)]
+            color = COLORS[(track["labels"][0]+1) % len(COLORS)]
         cv2.drawContours(frame, [track["contour"]], -1, color, 2)
 
         x,y,w,h = cv2.boundingRect(track["contour"])
         bottom_right = (x+w, y+h)
-        track_text = ""
+        track_text = "Worker "
         if show_label:
-            track_text = track_text + str(track["labels"])
+            track_text = track_text + str([label+1 for label in track["labels"]]).replace("[", "").replace("]", "") # 1 indexed to make it easier to read
         if show_area:
-            track_text = track_text + str(cv2.contourArea(track["contour"]))
+            track_text = track_text + ", Area " + str(cv2.contourArea(track["contour"]))
         frame = cv2.putText(frame, track_text, bottom_right, cv2.FONT_HERSHEY_SIMPLEX, .8, color, 2, cv2.LINE_AA)
     return frame
 
@@ -426,10 +427,8 @@ if __name__ == "__main__":
 
         # Pass in MAX_GROUP_AREA in case groups were formed
         contours = form_contours(processed, MIN_BEE_AREA, MAX_GROUP_AREA, remove_background=False, remove_extra_contours=True)
-        # TODO: test new structure, testing contours
-        # test_frame = cv2.drawContours(frame, contours, -1, (255, 255, 255), 2)
-        # cv2.imshow("test", test_frame)
-        # print("contours formed", len(contours))
+        # frame2 = cv2.drawContours(frame, contours, -1, (255, 255, 255)) NOTE: for demo
+        # annotated_frames.append(frame2)
         if len(contours) == 0:
             print("Warning: No contours were created")
             continue
@@ -489,7 +488,7 @@ if __name__ == "__main__":
     with open(datalog_outpath, "w") as outfile:
         json.dump(data_log, outfile)
     print("Exporting video...")
-    video_outpath = f"{src_processed_root}/{VIDEO_NAME}_tracked.mp4"
+    video_outpath = f"{src_processed_root}/{VIDEO_NAME}_contours.mp4"
     imgs2vid(annotated_frames, video_outpath, 30)
     if not os.path.exists(f'{src_processed_root}/{FRAMES_PATH}'):
         os.mkdir(f'{src_processed_root}/{FRAMES_PATH}')
@@ -497,4 +496,3 @@ if __name__ == "__main__":
             cv2.imwrite(f'{src_processed_root}/{FRAMES_PATH}/frame_{i+1:05d}.png', raw_frame)
     cap.release()
     cv2.destroyAllWindows()
-    os.system('say "your program has finished"') # NOTE: Just for testing

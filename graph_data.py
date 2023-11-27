@@ -6,8 +6,8 @@ import cv2
 from tqdm import tqdm
 import pandas
 import numpy as np
+from settings import COLORS
 
-COLORS = [(0, 0, 0), (255, 0, 0), (0, 255, 0), (0, 0, 255), (255,255,0), (255,0,255), (0,255,255), (255,255,255)]
 def imgs2vid(imgs, outpath, fps):
     ''' Stitch together frame imgs to make a movie. '''
     height, width, layers = imgs[0].shape
@@ -65,9 +65,10 @@ def graph_position_map(data_log, video_path):
     save_path = video_path.replace('.mp4', '_positions.mp4')
     imgs2vid(frames, save_path, 30)
 
-def graph_interval_data(data_log_scenting, test_name, num_bees):
+def graph_interval_data(data_log_scenting, test_name):
     # print(data_log_scenting)
     bee_interval_data = {}
+    num_bees = len(data_log_scenting.groupby('cropped_number'))
     for bee in data_log_scenting.groupby('cropped_number'):
         bee_name = bee[0]
 
@@ -84,31 +85,80 @@ def graph_interval_data(data_log_scenting, test_name, num_bees):
         bee_interval_data[bee_name] = intervals
 
     prev_plot = None
+    fig, axes = plt.subplots(nrows=num_bees, ncols=1,
+                           figsize=(num_bees*7,7))
     for bee_name, bee_intervals in bee_interval_data.items():
         time_seconds = [frame_num/30.0 for frame_num in bee_intervals.keys()]
         interval_seconds = [interval_frames/30.0 for interval_frames in bee_intervals.values()]
         bee_label = int(bee_name.split("_")[-1])
-        prev_plot = plt.subplot(num_bees, 1, bee_label+1, sharex=prev_plot)
+        axes[bee_label] = plt.subplot(num_bees, 1, bee_label+1)
+        bee_color = [color / 255 for color in reversed(COLORS[(bee_label+1)%len(COLORS)])] # convert to 0-1 range from bgr to rgb
+
         # print(bee_intervals.values())
         # plt.plot(time_seconds, interval_seconds, label=f'Worker {bee_label}', linewidth='.5')
         # plt.scatter(time_seconds, interval_seconds, label=f'Worker {bee_label}', c='#ff7f0e', s=2.5)
         # plt.bar(time_seconds, interval_seconds, width=(1/30), log=True, label=f'Worker {bee_label}')
-        plt.hist(interval_seconds, bins=np.arange(0, 7, 1/8), log=True,label=f'Worker {bee_label}') # grouped by 1/8 seconds
+        axes[bee_label] = plt.hist(interval_seconds, bins=np.arange(0, 7, 1/8), log=True,label=f'Worker {bee_label}', color=(max(0 ,bee_color[0]-.1), max(0, bee_color[1]-.1), max(0, bee_color[2]-.1))) # grouped by 1/8 seconds
         plt.legend()
     # plt.xlabel("seconds")
-    plt.xlabel("interval length (seconds)")
+    # hide tick and tick label of the big axis
+    # plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
+    # plt.xlabel("common X")
+    # plt.ylabel("common Y")
+    # plt.xlabel()
     # plt.ylabel("seconds since previous scenting event")
-    plt.ylabel("number of scenting events")
+    # plt.ylabel()
+    fig.supxlabel("interval length (seconds)")
+    fig.supylabel("number of scenting events")
     plt.suptitle(f"Histogram of scenting intervals for {test_name}")
     plt.get_current_fig_manager().set_window_title("intervals")
     plt.show()
 
-def graph_time_series(data_log_scenting, test_name, num_bees):
+def graph_time_series(data_log_scenting, test_name):
     bee_time_series = {}
+    num_bees = len(data_log_scenting.groupby('cropped_number'))
     for bee in data_log_scenting.groupby('cropped_number'):
         bee_name = bee[0]
         classification = bee[1]["classification"]
         bee_time_series[bee_name] = [1 if scenting == "scenting" else 0 for scenting in classification]
+
+
+    fig, axes = plt.subplots(nrows=num_bees, ncols=1,
+                           figsize=(num_bees*7,7))
+
+    print(bee_time_series.keys())
+    phi_coefficient = np.corrcoef([bee_time_series[bee_name] for bee_name in bee_time_series.keys()])[0, 1] # simplified form
+    print(f"Standard Phi coefficient: {phi_coefficient}")
+    jaccard_coefficient = np.sum(np.logical_and(bee_time_series["crop_0000"], bee_time_series["crop_0001"])) / np.sum(np.logical_or(bee_time_series["crop_0000"], bee_time_series["crop_0001"]))
+    print(f"Standard Jaccard coefficient: {jaccard_coefficient}")
+
+    best_pos_offset = 0
+    best_neg_offset = 0
+    best_pos_phi_coefficient = -1
+    best_pos_jaccard_coefficient = -1
+    best_neg_phi_coefficient = -1
+    best_neg_jaccard_coefficient = -1
+    for offset in range(1, 30*10, 1):
+        offset_phi_coefficient = np.corrcoef(bee_time_series["crop_0000"][offset:], bee_time_series["crop_0001"][:-offset])[0, 1]
+        offset_jaccard_coefficient = np.sum(np.logical_and(bee_time_series["crop_0000"][offset:], bee_time_series["crop_0001"][:-offset])) / np.sum(np.logical_or(bee_time_series["crop_0000"][offset:], bee_time_series["crop_0001"][:-offset]))
+        if offset_phi_coefficient > best_pos_phi_coefficient and offset_jaccard_coefficient > best_pos_jaccard_coefficient:
+            best_pos_phi_coefficient = offset_phi_coefficient
+            best_pos_jaccard_coefficient = offset_jaccard_coefficient
+            best_pos_offset = offset
+
+        offset_phi_coefficient = np.corrcoef(bee_time_series["crop_0000"][:-offset], bee_time_series["crop_0001"][offset:])[0, 1]
+        offset_jaccard_coefficient = np.sum(np.logical_and(bee_time_series["crop_0000"][:-offset], bee_time_series["crop_0001"][offset:])) / np.sum(np.logical_or(bee_time_series["crop_0000"][:-offset], bee_time_series["crop_0001"][offset:]))
+        if offset_phi_coefficient > best_neg_phi_coefficient and offset_jaccard_coefficient > best_neg_jaccard_coefficient:
+            best_neg_phi_coefficient = offset_phi_coefficient
+            best_neg_jaccard_coefficient = offset_jaccard_coefficient
+            best_neg_offset = offset
+    print(f"Best positive offset (worker 0 offset foward in time): {best_pos_offset/30.0} seconds or {best_pos_offset} frames")
+    print(f"Best positive offset Phi coefficient: {best_pos_phi_coefficient}")
+    print(f"Best positive offset Jaccard coefficient: {best_pos_jaccard_coefficient}")
+
+    print(f"Best negative offset (worker 1 offset foward in time): {best_neg_offset/30.0} seconds or {best_neg_offset} frames")
+    print(f"Best negative offset Phi coefficient: {best_neg_jaccard_coefficient}")
+    print(f"Best negative offset Jaccard coefficient: {best_neg_jaccard_coefficient}")
 
     for bee_name, bee_classification in bee_time_series.items():
         bee_label = int(bee_name.split("_")[-1])
@@ -123,14 +173,17 @@ def graph_time_series(data_log_scenting, test_name, num_bees):
                     classification_downsampled.append(0)
             else:
                 classification_downsampled.append(1)
-        plt.subplot(num_bees, 1, bee_label+1)
-        plt.bar(time_seconds, classification_downsampled, width=(1/30.0), label=f'Worker {bee_label}')
-        # plt.scatter(time_seconds, bee_classification, label=f'Worker {bee_label}', c='#ff7f0e', s=.5)
-        # plt.plot(time_seconds, bee_classification, label=f'Worker {bee_label}', linewidth='.5')
-        plt.yticks([0, 1], ["non_scenting", "scenting"])
+        axes[bee_label] = plt.subplot(num_bees, 1, bee_label+1)
+        bee_color = [color / 255 for color in reversed(COLORS[(bee_label+1)%len(COLORS)])] # convert to 0-1 range from bgr to rgb
+
+        # axes[bee_label].bar(time_seconds, classification_downsampled, width=(1/30.0), label=f'Worker {bee_label+1}', color=bee_color, linewidth=.1, edgecolor='black')
+        # axes[bee_label].scatter(time_seconds, bee_classification, label=f'Worker {bee_label}', c=bee_color, s=.5)
+        axes[bee_label].plot(time_seconds, bee_classification, label=f'Worker {bee_label}', linewidth='1', color=(max(0 ,bee_color[0]-.1), max(0, bee_color[1]-.1), max(0, bee_color[2]-.1)))
+        axes[bee_label].set_yticks([0, 1])
+        axes[bee_label].set_yticklabels(['not scenting', 'scenting'])
         plt.legend()
-    plt.xlabel("seconds")
-    plt.ylabel("scenting classification")
+    fig.supxlabel('seconds')
+    fig.supylabel('classification')
 
     plt.suptitle(f"Time series data of scenting classifications for {test_name}")
     plt.get_current_fig_manager().set_window_title("intervals")
@@ -144,7 +197,6 @@ if __name__ == '__main__':
     data_log_scenting = pandas.read_json(open(f"{src_processed_root}/data_log_scenting.json"))
     graph = "graph_histogram"
     test_name = src_processed_root.split("/")[-1]
-    num_bees = 3
 
     if graph == "graph_position_map":
         print("-- Select video to process from list...")
@@ -154,5 +206,7 @@ if __name__ == '__main__':
     # graph_dist_to_queen(data_log, labels)
 
     # graph_position_map(data_log, video_path)
-    # graph_interval_data(data_log_scenting, test_name, num_bees)
-    graph_time_series(data_log_scenting, test_name, num_bees)
+    plt.rcParams.update({'font.size': 20})
+    # graph_interval_data(data_log_scenting, test_name)
+    # NOTE: Update rc params for poster
+    graph_time_series(data_log_scenting, test_name)
