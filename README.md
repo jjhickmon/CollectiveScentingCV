@@ -1,6 +1,8 @@
 # Honeybee Swarm Dynamics: Investigating the Relationship Between Individual Decision Making and Collective Foraging
 # Computer Vision Pipeline
 
+[Project Report](https://jjhickmon.github.io/dreu/files/finalreport.pdf)
+
 ## Note
 The changes have not yet been tested on other devices. Email javonh@cs.washington.edu if there are any issues when using this pipeline.
 Some of the requirements listed in requirements.txt may no longer be needed. Feel free to only install necessary libraries.
