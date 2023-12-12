@@ -30,6 +30,7 @@ Since the background of our video is stationary we utilize a standard method of 
 ## Step 1. Run tracker
 
 This is a semi-automatic process that uses manual thresholding, morphological transformations, and our custom algorithm to detect individual bees in the frames. Bees that are in clusters (i.e. touching or overlapping with one another) are separated into the individuals that compose the cluster.
+![Tracker Demo Image](https://github.com/peleg-lab/IndividualTracker/blob/a97c6c1ac4b0ed28dd74ca9caea2fb8d0b5a91d2/doc/q2bs_2_demo_joined.png)
 
 ### Input:
 Images of frames extracted from video. Images should be stored in *data/processed/{folder_name}/{frames_folder_name}/*. A small dataset is provided [here](https://drive.google.com/drive/folders/1adOMmJc2hFB4eaDnGkpJkUybTysl3bRh?usp=sharing), and should be unzipped and placed in *data/processed/*. Inside the dataset folder, *denoised_frames/* holds the images from a short video. There is also a folder *UI_annotation_history* that holds sample data for the annotation described below.
@@ -138,6 +139,7 @@ Navigate to *orientation_estimation* and run **`python train_orientation_estimat
 ## Step 4. Visualize scenting recognition data
 
 After the whole detection and scenting recognition pipeline, we can make a movie of the output data to visualize the scenting bees and their scenting directions.
+![Visualization Demo Image](https://github.com/peleg-lab/IndividualTracker/blob/a97c6c1ac4b0ed28dd74ca9caea2fb8d0b5a91d2/doc/q2bs_2_long_traj.png)
 
 ### Input:
 The *data_log_orientation.json* from step 3 and the frame images (e.g. *denoised_frames*).
@@ -157,6 +159,7 @@ In the data folder for this specific movie, a folder *output_frames* will be cre
 ## Step 5. Graph data (optional)
 
 Optionally you can graph the data generated from the tracker using matplotlib.
+![Graph Demo Image](https://github.com/peleg-lab/IndividualTracker/blob/a97c6c1ac4b0ed28dd74ca9caea2fb8d0b5a91d2/doc/q2bs_2_demo_timeseries.png)
 
 ### Input:
 The *data_log.json* and *data_log_scenting.json* are used to generate the graphs. Make sure to select the root directory for the video.
