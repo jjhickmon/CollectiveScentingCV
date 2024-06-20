@@ -30,10 +30,12 @@ import utils.general as general_utils
 from tqdm import tqdm
 
 def build_resnet(num_classes):
-    print(f"Building resnet-18 with {num_classes} classes...")
-    resnet = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
+    print(f"Building resnet-18 with {num_classes} classes.")
+    resnet = torchvision.models.resnet18(pretrained=True)
     num_ftrs = resnet.fc.in_features
-    resnet.fc = nn.Linear(num_ftrs, num_classes)
+    resnet.fc = nn.Sequential(
+        nn.Dropout(0.5),
+        nn.Linear(num_ftrs, num_classes))
     return resnet
 
 def predict(bee_data, num_bees, data_loader, model, device, batch_size):
@@ -86,7 +88,7 @@ def save_prediction(bee_data, classifications, folder_paths):
 def setup_args():
     parser = argparse.ArgumentParser(description='Classify scenting bees!')
     parser.add_argument('-p', '--data_root', dest='data_root', type=str, default='data/processed')
-    parser.add_argument('-m', '--model_file', dest='model_file', type=str, default='ResnetScentingModel.pt')
+    parser.add_argument('-m', '--model_file', dest='model_file', type=str, default='ResnetScentingModel_epoch00203.pt')
     parser.add_argument('-b', '--batch_size', dest='batch_size', type=int, default=2)
     parser.add_argument('-c', '--num_classes', dest='num_classes', type=int, default=2)
     args = parser.parse_args()

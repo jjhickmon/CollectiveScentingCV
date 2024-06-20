@@ -3,6 +3,49 @@ import glob
 import subprocess
 import shutil
 import numpy as np
+import cv2
+from utils.settings import *
+
+def form_contours(image, minArea, maxArea, NUM_BEES, remove_background=False, remove_extra_contours=False):
+    global min_contour
+    # Form contours and filter by size
+    contours, hierarchy = cv2.findContours(image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # remove background and empty space
+    if len(contours) == 0 or len(hierarchy) == 0:
+        return contours
+    hierarchy = hierarchy[0]
+
+    # Remove background and neutral space
+    if remove_background:
+        contours = [contour for i, contour in enumerate(contours) if hierarchy[i][2] == -1]
+
+    prev_num_contours = len(contours)
+    contours = [contour for contour in contours if minArea < cv2.contourArea(contour) < maxArea]
+    if not prev_num_contours == len(contours) and DEBUG:
+        print("Warning: Removed contours based on area")
+
+    if remove_extra_contours:
+        # conver image to bgr
+        image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        cv2.drawContours(image, contours, -1, (0, 0, 255), 2)
+        if len(contours) > NUM_BEES:
+            diff = len(contours) - NUM_BEES
+            contours = sorted(contours, key=lambda contour: cv2.contourArea(contour))[diff:]
+            if DEBUG:
+                print("Warning: Removed excess contours based on NUM_BEES")
+    return contours
+
+def imgs2vid(imgs, outpath, fps):
+    ''' Stitch together frame imgs to make a movie. '''
+    height, width, layers = imgs[0].shape
+    fourcc = cv2.VideoWriter_fourcc("m", "p", "4", "v")
+    video = cv2.VideoWriter(outpath, fourcc, fps, (width, height), True)
+
+    for img_i, img in enumerate(imgs):
+        video.write(img)
+
+    cv2.destroyAllWindows()
+    video.release()
 
 def setup_draw_img(base_img):
     draw_img = base_img.copy()

@@ -2,6 +2,13 @@ import cv2
 import numpy as np
 import utils.general as general_utils
 
+def color_threshold(image, color, offset):
+    color_thresh = np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
+    offset_color = (np.array(color) + offset).astype(image.dtype)
+    # NOTE: since the bees are the darkest part of the image, we can just threshold the image based on the color of the bee
+    color_thresh = cv2.bitwise_or(color_thresh, cv2.inRange(image, np.zeros(len(offset_color), dtype=image.dtype), offset_color))
+    return color_thresh
+
 def adaptive_thresholding(img, invert=True):
     blur = cv2.GaussianBlur(img,(5,5),0)
     _, img_mask = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
@@ -40,3 +47,17 @@ def remove_lines(gray):
     graymod = np.copy(gray).astype(np.float)
     graymod *= np.expand_dims(np.max(rowvals) / np.array(rowvals), axis=1)
     return graymod.astype(np.uint8)
+
+def remove_lines_old(gray):
+    rowvals = np.mean(np.sort(gray, axis=1)[:, -100:], axis=1)
+    graymod = np.copy(gray).astype(float)
+    graymod *= np.expand_dims(np.max(rowvals) / np.array(rowvals), axis=1)
+    graymod = np.clip(graymod, 0, 255)
+    return graymod.astype(np.uint32)
+
+def remove_lines_BGR(img_BGR):
+    img_BGR_no_lines = np.zeros_like(img_BGR)
+    for c_i in range(3):
+        img_BGR_no_lines[:, :, c_i] = remove_lines_old(img_BGR[:, :, c_i])
+
+    return img_BGR_no_lines

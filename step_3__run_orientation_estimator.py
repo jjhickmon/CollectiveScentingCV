@@ -29,12 +29,25 @@ import orientation_estimation.modules.EvaluationUtils as Evaluation
 # sys.path.append('../')
 import utils.general as general_utils
 
-def build_resnet(num_classes=1):
-    print(f"Building resnet-18 with {num_classes} class(es)...")
-    resnet = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
+class CustomLastLayer(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.activation = nn.Sigmoid()
+        
+    def forward(self, x):
+        out = self.activation(x)
+        out = out * 2.0 * np.pi
+        return out
+
+def build_resnet(num_classes):
+    print(f"Building resnet-18 with {num_classes} class(es).")
+    resnet = torchvision.models.resnet18(pretrained=True)
     num_ftrs = resnet.fc.in_features
+    
     resnet.fc = nn.Sequential(
+        nn.Dropout(p=0.2),
         nn.Linear(num_ftrs, num_classes),
+        CustomLastLayer()
     )
     return resnet
 
@@ -80,7 +93,7 @@ def save_prediction(bee_data, orientation, folder_paths):
 def setup_args():
     parser = argparse.ArgumentParser(description='Classify scenting bees!')
     parser.add_argument('-p', '--data_root', dest='data_root', type=str, default='data/processed')
-    parser.add_argument('-m', '--model_file', dest='model_file', type=str, default='ResnetOrientationModel.pt')
+    parser.add_argument('-m', '--model_file', dest='model_file', type=str, default='DROPOUT_ResnetOrientationModel_epoch0771.pt')
     parser.add_argument('-b', '--batch_size', dest='batch_size', type=int, default=32)
     parser.add_argument('-c', '--num_classes', dest='num_classes', type=int, default=1)
     args = parser.parse_args()

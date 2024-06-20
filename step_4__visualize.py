@@ -123,14 +123,15 @@ def main(args, filter_bees=None):
         if frame_name not in data_log.keys():
             continue
 
-        cv2.line(frame_img, (1340, 20), (1460, 20), 0, 3, cv2.LINE_AA)
-        cv2.line(frame_img, (1340, 10), (1340, 30), 0, 3, cv2.LINE_AA)
-        cv2.line(frame_img, (1460, 10), (1460, 30), 0, 3, cv2.LINE_AA)
-        cv2.putText(frame_img, "5cm ", (1370, 50), cv2.FONT_HERSHEY_SIMPLEX, .8, 0, 2, cv2.LINE_AA)
+        # cv2.line(frame_img, (1340, 20), (1460, 20), 0, 3, cv2.LINE_AA)
+        # cv2.line(frame_img, (1340, 10), (1340, 30), 0, 3, cv2.LINE_AA)
+        # cv2.line(frame_img, (1460, 10), (1460, 30), 0, 3, cv2.LINE_AA)
+        # cv2.putText(frame_img, "5cm ", (1370, 50), cv2.FONT_HERSHEY_SIMPLEX, .8, 0, 2, cv2.LINE_AA)
 
-        cv2.rectangle(frame_img, (505, 150),(560, 400), COLORS[0], 2)
-        cv2.putText(frame_img, "Queen", (495, 130), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 0, 0), 3, cv2.LINE_AA) # black outline
-        cv2.putText(frame_img, "Queen", (495, 130), cv2.FONT_HERSHEY_SIMPLEX, .8, COLORS[0], 2, cv2.LINE_AA)
+        # Label the queen
+        # cv2.rectangle(frame_img, (505, 150),(560, 400), COLORS[0], 2)
+        # cv2.putText(frame_img, "Queen", (495, 130), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 0, 0), 3, cv2.LINE_AA) # black outline
+        # cv2.putText(frame_img, "Queen", (495, 130), cv2.FONT_HERSHEY_SIMPLEX, .8, COLORS[0], 2, cv2.LINE_AA)
 
         # Draw bounding boxes, labels, and previous positions
         for bee in list(data_log[frame_name]):
@@ -151,18 +152,20 @@ def main(args, filter_bees=None):
                     prev_bee_positions[label] = {'positions':[center], 'color':color}
                 else:
                     prev_bee_positions[label]['positions'].append(center)
-                if len(prev_bee_positions[label]['positions']) > max_path_length:
-                    prev_bee_positions[label]['positions'].pop(0)
+                # if len(prev_bee_positions[label]['positions']) > max_path_length:
+                #     prev_bee_positions[label]['positions'].pop(0)
 
                 # Draw lines connecting previous positions
                 positions = prev_bee_positions[label]['positions']
                 for i, position in enumerate(positions[1:]):
-                    color = cv2.cvtColor(np.uint8([[prev_bee_positions[label]['color']]]), cv2.COLOR_BGR2HSV)
-                    (h, s, v) = cv2.split(color)
-                    s = np.array([np.clip(s * ((i / len(positions))), 50, 255)], dtype=np.uint8) # adjust lightness based on age
-                    color = cv2.merge([h, s, v])
-                    color = cv2.cvtColor(color, cv2.COLOR_HSV2BGR)[0][0]
-                    color = (int(color[0]), int(color[1]), int(color[2]))
+                    # color = cv2.cvtColor(np.uint8([[prev_bee_positions[label]['color']]]), cv2.COLOR_BGR2HSV)
+                    color = prev_bee_positions[label]['color']
+                    # Fade color based on age
+                    # (h, s, v) = cv2.split(color)
+                    # s = np.array([np.clip(s * ((i / len(positions))), 50, 255)], dtype=np.uint8) # adjust lightness based on age
+                    # color = cv2.merge([h, s, v])
+                    # color = cv2.cvtColor(color, cv2.COLOR_HSV2BGR)[0][0]
+                    # color = (int(color[0]), int(color[1]), int(color[2]))
                     cv2.line(frame_img, position, positions[i], color, 2, cv2.LINE_AA)
 
         # Draw scenting direction arrows from previous frames
@@ -177,7 +180,8 @@ def main(args, filter_bees=None):
                                     prev_dir[1], color=arrow_color,
                                     thickness=2, tipLength=2)
                 else:
-                    cv2.circle(frame_img, prev_dir, 2, arrow_color, -1)
+                    # cv2.circle(frame_img, prev_dir, 2, arrow_color, -1)
+                    pass
 
         for bee in list(data_log[frame_name]):
             bee_x = int(bee["x"])
@@ -186,11 +190,12 @@ def main(args, filter_bees=None):
             bee_h = int(bee["h"])
             labels = [int(label) for label in bee["label"].split(',')]
 
-            color = COLORS[(labels[0]+1)%6] if len(labels) == 1 else (180, 180, 180)
-            image_utils.draw_box(frame_img, bee_x, bee_y, bee_w, bee_h, 2,
-                                color=color, draw_centroid=True)
-            cv2.putText(frame_img, "Worker " + str([label+1 for label in labels]).replace("[", "").replace("]", ""), (bee_x+bee_w, bee_y+bee_h), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 0, 0), 3, cv2.LINE_AA) # black outline
-            cv2.putText(frame_img, "Worker " + str([label+1 for label in labels]).replace("[", "").replace("]", ""), (bee_x+bee_w, bee_y+bee_h), cv2.FONT_HERSHEY_SIMPLEX, .8, color, 2, cv2.LINE_AA)
+            # NOTE: draw box and label for each bee
+            # color = COLORS[(labels[0]+1)%6] if len(labels) == 1 else (180, 180, 180)
+            # image_utils.draw_box(frame_img, bee_x, bee_y, bee_w, bee_h, 2,
+            #                     color=color, draw_centroid=True)
+            # cv2.putText(frame_img, "Worker " + str([label+1 for label in labels]).replace("[", "").replace("]", ""), (bee_x+bee_w, bee_y+bee_h), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 0, 0), 3, cv2.LINE_AA) # black outline
+            # cv2.putText(frame_img, "Worker " + str([label+1 for label in labels]).replace("[", "").replace("]", ""), (bee_x+bee_w, bee_y+bee_h), cv2.FONT_HERSHEY_SIMPLEX, .8, color, 2, cv2.LINE_AA)
 
         # If bees are scenting, draw orientation arrow
         if frame_path in all_wanted_frames:
@@ -217,7 +222,8 @@ def main(args, filter_bees=None):
                 # ========== Plot orientation arrow
                 length = [35 if i in scenting_idxs else 20][0]
                 thickness = [5 if i in scenting_idxs else 4][0]
-                scenting_color = (3, 252, 244)
+                # scenting_color = (3, 252, 244)
+                scenting_color = (120, 252, 120)
                 non_scenting_color = (31, 194, 91)
                 arrow_color = [scenting_color if i in scenting_idxs else non_scenting_color][0]
 
@@ -230,9 +236,9 @@ def main(args, filter_bees=None):
                 pred_x2, pred_y2 = get_endpoint((midpoint_x, midpoint_y), angle=-int(orientation)+180, length=5)
 
                 # Plot arrows
-                cv2.arrowedLine(frame_img, (int(pred_endx), int(pred_endy)),
-                                (int(pred_x1), int(pred_y1)), color=(0, 0, 255),
-                                thickness=2, tipLength=0.6)
+                # cv2.arrowedLine(frame_img, (int(pred_endx), int(pred_endy)),
+                #                 (int(pred_x1), int(pred_y1)), color=(0, 0, 255),
+                #                 thickness=2, tipLength=0.6)
 
                 # save scenting direction
                 # if prev_scenting_frame is not None:
@@ -251,12 +257,14 @@ def main(args, filter_bees=None):
                     prev_scenting_directions[label] = [{"frame":frame_i, "directions":((int(pred_endx2), int(pred_endy2)),
                                         (int(pred_x2), int(pred_y2)))}]
 
+        # NOTE: Remove old scenting directions once the path is too long
         for prev_dir in prev_scenting_directions.values():
             if len(prev_dir) > 1:
-                print("prev_dir", prev_dir[0])
-                while frame_i - prev_dir[0]["frame"] > max_path_length:
-                    prev_dir.pop(0)
+                # print("prev_dir", prev_dir[0])
+                # while frame_i - prev_dir[0]["frame"] > max_path_length:
+                #     prev_dir.pop(0)
                 # prev_scenting_frame = frame_path
+                pass
 
         cv2.imshow('frame', frame_img)
         k = cv2.waitKey(30) & 0xff
