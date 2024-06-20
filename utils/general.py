@@ -25,7 +25,7 @@ def form_contours(image, minArea, maxArea, NUM_BEES, remove_background=False, re
         print("Warning: Removed contours based on area")
 
     if remove_extra_contours:
-        # conver image to bgr
+        # convert image to bgr
         image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
         cv2.drawContours(image, contours, -1, (0, 0, 255), 2)
         if len(contours) > NUM_BEES:

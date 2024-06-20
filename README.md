@@ -267,3 +267,14 @@ There are many potential different approaches that I could see improving the eff
 
 2. Depth Mapping. In OpenCV, you are able to create a depth map from a stereo camera setup (see
 the [opencv documentation](https://docs.opencv.org/4.x/dd/d53/tutorial_py_depthmap.html)). The success of this technique would highly depend of the fidelity of the stero camera setup, because if the depth map cannot detect the difference between the bottom of the arena and the top of the bees, it would be useful. If this approach was to be attempted, I would recommend just trying the setup with an empty arena, and with a sample object in the arena, just to understand if the depth map is accurate enough for our uses. I could see depth mapping being used in conjunction with the existing method, where grouped bees would be segmented with the watershed algorithm still, but according to the depth map.
+
+# Change Log
+- Added selective group masking
+- Looped through group masks
+- Split code into separate files
+- Added preprocessing screen to modify settings
+- Added preprocessing save files
+- Modified track object structure
+- Implemented bee color sampling
+- Removed background subtraction (replaced with color-based background removal)
+- Implemented video rotating and cropping
