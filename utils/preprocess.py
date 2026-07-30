@@ -160,12 +160,12 @@ def update_frame(frame, settings):
         color_no_artifacts = cv2.rectangle(color_no_artifacts, artifact, (0, 0, 255), -1)
 
     contours = form_contours(no_artifacts, MIN_BEE_AREA, MAX_GROUP_AREA, NUM_BEES=NUM_BEES, remove_background=True, remove_extra_contours=True)
-    contours2 = form_contours(no_artifacts, 0, 100000, NUM_BEES=NUM_BEES, remove_background=False, remove_extra_contours=False)
-    cv2.drawContours(color_no_artifacts, contours2, -1, (0, 0, 255), 2)
+    # contours2 = form_contours(no_artifacts, 0, 100000, NUM_BEES=NUM_BEES, remove_background=False, remove_extra_contours=False)
+    # cv2.drawContours(color_no_artifacts, contours2, -1, (0, 0, 255), 2)
     cv2.drawContours(color_no_artifacts, contours, -1, (0, 255, 0), 2)
     # print min area and max area detected from contours 2
-    if len(contours2) > 0:
-        print("min area", min([cv2.contourArea(contour) for contour in contours2]))
-        print("max area", max([cv2.contourArea(contour) for contour in contours2]))
+    if len(contours) > 0:
+        print("min area", min([cv2.contourArea(contour) for contour in contours]))
+        print("max area", max([cv2.contourArea(contour) for contour in contours]))
     no_artifacts = cv2.cvtColor(no_artifacts, cv2.COLOR_GRAY2BGR)
     return img, background_sub, threshold, no_artifacts, color_no_artifacts

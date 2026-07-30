@@ -1,4 +1,5 @@
 import cv2
+from utils.preprocess import set_preprocess_settings
 from utils.settings import *
 import numpy as np
 from utils.image import color_threshold
@@ -164,10 +165,11 @@ def manual_segmentation(frame, processed, background_sub, manual_group_track):
 
     return points, manual_mask
 
-def split_groups(frame, background_sub, NUM_BEES, groups, prev_tracks):
+def split_groups(frame, background_sub, NUM_BEES, groups, prev_tracks, preprocess_data):
     visualization = np.copy(frame)
     final_split_tracks = []
     # Split groups
+    set_preprocess_settings(**preprocess_data)
     for group_track in groups:
         processed = np.zeros((frame.shape[0], frame.shape[1]), dtype=np.uint8)
         processed = cv2.drawContours(processed, [group_track["contour"]], -1, (255, 255, 255), -1)

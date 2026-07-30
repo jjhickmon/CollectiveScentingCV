@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
         # Split the groups and update the tracks
         if ALLOW_MANUAL_SEGMENTING and (prev_tracks is not None) and len(groups) >= 1:
-            split_tracks, frame = split_groups(frame, background_sub, NUM_BEES, groups, prev_tracks)
+            split_tracks, frame = split_groups(frame, background_sub, NUM_BEES, groups, prev_tracks, preprocess_data={"cap": cap, "frame": frame, "frame_shape": frame_shape, "src_processed_root": src_processed_root})
             for group in groups:
                 tracks.remove(group)
             tracks.extend(split_tracks)
