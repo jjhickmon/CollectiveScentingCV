@@ -1,55 +1,51 @@
-###### IMPORTS ######
-# General
 import os
 import sys
-import cv2
 import glob
 import json
 import argparse
-import pandas as pd
-import numpy as np
 
-# Pytorch
+import cv2
+import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
-from torch.utils.data.sampler import SubsetRandomSampler
-
 import torchvision
 import torchvision.models
 import torchvision.transforms as transforms
+from torch.utils.data import Dataset, DataLoader
+from torch.utils.data.sampler import SubsetRandomSampler
 
-# Import other python files
-import orientation_estimation.modules.Utils as Utils
+import utils.general as general_utils
 import orientation_estimation.modules.DataHandler as DataHandler
 import orientation_estimation.modules.DataSamplers as DataSamplers
 import orientation_estimation.modules.EvaluationUtils as Evaluation
+import orientation_estimation.modules.Utils as Utils
 
-# sys.path.append('../')
-import utils.general as general_utils
 
 class CustomLastLayer(nn.Module):
     def __init__(self):
         super().__init__()
         self.activation = nn.Sigmoid()
-        
+
     def forward(self, x):
         out = self.activation(x)
         out = out * 2.0 * np.pi
         return out
 
+
 def build_resnet(num_classes):
     print(f"Building resnet-18 with {num_classes} class(es).")
     resnet = torchvision.models.resnet18(pretrained=True)
     num_ftrs = resnet.fc.in_features
-    
+
     resnet.fc = nn.Sequential(
         nn.Dropout(p=0.2),
         nn.Linear(num_ftrs, num_classes),
         CustomLastLayer()
     )
     return resnet
+
 
 def predict(bee_data, data_loader, model, device):
     orientations = list(np.zeros(len(bee_data.data_df)))
@@ -82,6 +78,7 @@ def predict(bee_data, data_loader, model, device):
         print('\nEnding early.')
     return orientations
 
+
 def save_prediction(bee_data, orientation, folder_paths):
     bee_data.data_df['orientation'] = orientation
     labeled_h5 = bee_data.data_df.to_dict('list')
@@ -99,6 +96,7 @@ def setup_args():
     args = parser.parse_args()
     return args
 
+
 def main(args):
     # Select the video
     print("-- Select video from list...")
@@ -109,7 +107,10 @@ def main(args):
     # Obtain up paths for video folder
     vid_name = src_processed_root.split('/')[-1]
     folder_paths = glob.glob(f'{args.data_root}/{vid_name}')
-    json_paths = sorted([os.path.join(folder, f'data_log_scenting.json') for folder in folder_paths])
+    json_paths = sorted(
+        os.path.join(folder, 'data_log_scenting.json')
+        for folder in folder_paths
+    )
     frames_path = f'denoised_frames/'
 
     # ------------------------------------------------------------- #
@@ -118,15 +119,24 @@ def main(args):
     baseline_transforms = transforms.Compose([transforms.ToTensor()])
 
     print(f'Setting up data handler...')
-    bee_data = DataHandler.BeeDataset_2(args.data_root, json_paths, frames_path,
-                          baseline_transforms, augment_transforms=None,
-                          mode='eval')
+    bee_data = DataHandler.BeeDataset_2(
+        args.data_root,
+        json_paths,
+        frames_path,
+        baseline_transforms,
+        augment_transforms=None,
+        mode='eval',
+    )
     print(f'Number of bee images to process: {len(bee_data.data_df)}')
 
     # ------------------------------------------------------------- #
     ###### DATALOADER ######
     print(f'Setting up data loader...\n')
-    data_loader = DataLoader(bee_data, batch_size=args.batch_size, drop_last=False)
+    data_loader = DataLoader(
+        bee_data,
+        batch_size=args.batch_size,
+        drop_last=False,
+    )
 
     # ------------------------------------------------------------- #
     ###### MODEL ######
@@ -138,7 +148,7 @@ def main(args):
     ###### LOAD TRAINED MODEL ######
     print(f"Loading trained model...\n")
     load_path = f'orientation_estimation/saved_models/{args.model_file}'
-    load_dict = torch.load(load_path, map_location=device)
+    load_dict = torch.load(load_path, map_location=device, weights_only=False)
     model.load_state_dict(load_dict['model'])
     metrics = load_dict['metrics']
     model.eval()
@@ -154,6 +164,7 @@ def main(args):
     print(f'\nSaving orientation estimations...')
     save_prediction(bee_data, orientations, folder_paths)
     print(f"Fin.")
+
 
 if __name__ == '__main__':
     args = setup_args()

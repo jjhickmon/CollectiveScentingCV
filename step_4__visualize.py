@@ -4,40 +4,45 @@ orientation estimation data on frames to label scenting bees
 and their scenting directions.
 '''
 
-###### IMPORTS ######
 import os
 import sys
-import cv2
 import glob
-import glob2
 import json
 import argparse
-import pandas as pd
-import numpy as np
 import csv
 import subprocess
-import utils.image as image_utils
-from tqdm import tqdm
 import math
 
-# Plotting
+import cv2
+import glob2
+import numpy as np
+import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from tqdm import tqdm
+
+import utils.image as image_utils
+import utils.general as general_utils
+from utils.settings import COLORS
+
 sns.set(style="ticks")
 plt.rcParams["font.family"] = "Arial"
 
-import utils.general as general_utils
-from utils.settings import COLORS
 
 ###### HELPER FUNCTIONS ######
 def get_wanted_frames(start_frame, end_frame, all_frames):
     start_num = int(start_frame.split('_')[1])
     end_num = int(end_frame.split('_')[1])
-    wanted_frames = np.arange(start_num, end_num+1)
-    all_frame_nums = np.array([int(os.path.basename(frame).split('_')[1].split('.')[0])
-                               for frame in all_frames])
+    wanted_frames = np.arange(start_num, end_num + 1)
+    all_frame_nums = np.array(
+        [
+            int(os.path.basename(frame).split('_')[1].split('.')[0])
+            for frame in all_frames
+        ]
+    )
     condition_1 = np.in1d(all_frame_nums, wanted_frames)
     return all_frames[condition_1]
+
 
 def get_endpoint(point, angle, length):
     '''
@@ -52,6 +57,7 @@ def get_endpoint(point, angle, length):
     endx = x + (length * np.cos(np.radians(angle)))
     return endx, endy
 
+
 def imgs2vid(imgs, outpath, fps):
     ''' Stitch together frame imgs to make a movie. '''
     height, width, layers = imgs[0].shape
@@ -64,12 +70,14 @@ def imgs2vid(imgs, outpath, fps):
     cv2.destroyAllWindows()
     video.release()
 
+
 def setup_args():
     parser = argparse.ArgumentParser(description='Visualize results!')
     parser.add_argument('-p', '--data_root', dest='data_root', type=str, default='data/processed')
     parser.add_argument('-r', '--fps', dest='fps', type=int, default=30)
     args = parser.parse_args()
     return args
+
 
 ###### MAIN ######
 def main(args, filter_bees=None):
@@ -82,7 +90,9 @@ def main(args, filter_bees=None):
     # Obtain up paths for video folder
     vid_name = src_processed_root.split('/')[-1]
     folder_paths = glob.glob(f'{args.data_root}/{vid_name}')
-    json_paths = sorted([os.path.join(folder, f'data_log.json') for folder in folder_paths])
+    json_paths = sorted(
+        os.path.join(folder, 'data_log.json') for folder in folder_paths
+    )
     frames_path = f'denoised_frames/'
 
     #------- PROCESS DATA -------#
@@ -96,13 +106,13 @@ def main(args, filter_bees=None):
 
     # Obtain first and last frames
     start_frame = resnet_df['frame_num'][0]
-    end_frame = resnet_df['frame_num'][len(resnet_df['frame_num'])-1]
+    end_frame = resnet_df['frame_num'][len(resnet_df['frame_num']) - 1]
 
     # Get path of all frames & make folder to store labeled frames
     frames_path = os.path.join(folder_paths[0], f'denoised_frames/')
     all_frames = np.sort(glob.glob(f'{frames_path}frame_*.png'))
     all_wanted_frames = get_wanted_frames(start_frame, end_frame, all_frames)
-    resnet_frames_path = os.path.join(folder_paths[0], f'output_frames/')
+    resnet_frames_path = os.path.join(folder_paths[0], 'output_frames')
     os.makedirs(resnet_frames_path, exist_ok=True)
 
     data_log = json.load(open(f"{src_processed_root}/data_log.json"))
@@ -134,6 +144,7 @@ def main(args, filter_bees=None):
         # cv2.putText(frame_img, "Queen", (495, 130), cv2.FONT_HERSHEY_SIMPLEX, .8, COLORS[0], 2, cv2.LINE_AA)
 
         # Draw bounding boxes, labels, and previous positions
+
         for bee in list(data_log[frame_name]):
             if filter_bees is not None:
                 if label not in filter_bees:
@@ -144,8 +155,12 @@ def main(args, filter_bees=None):
             bee_h = int(bee["h"])
             bee_labels = [int(label) for label in bee["label"].split(',')]
 
-            center = (int(bee_x+bee_w/2), int(bee_y+bee_h/2))
-            color = COLORS[bee_labels[0]+1%6] if len(bee_labels) == 1 else (180, 180, 180)
+            center = (int(bee_x + bee_w / 2), int(bee_y + bee_h / 2))
+            color = (
+                COLORS[(bee_labels[0] + 1) % len(COLORS)]
+                if len(bee_labels) == 1
+                else (180, 180, 180)
+            )
 
             for label in bee_labels:
                 if label not in prev_bee_positions.keys():
@@ -155,30 +170,36 @@ def main(args, filter_bees=None):
                 # if len(prev_bee_positions[label]['positions']) > max_path_length:
                 #     prev_bee_positions[label]['positions'].pop(0)
 
-                # Draw lines connecting previous positions
-                positions = prev_bee_positions[label]['positions']
-                for i, position in enumerate(positions[1:]):
-                    # color = cv2.cvtColor(np.uint8([[prev_bee_positions[label]['color']]]), cv2.COLOR_BGR2HSV)
-                    color = prev_bee_positions[label]['color']
-                    # Fade color based on age
-                    # (h, s, v) = cv2.split(color)
-                    # s = np.array([np.clip(s * ((i / len(positions))), 50, 255)], dtype=np.uint8) # adjust lightness based on age
-                    # color = cv2.merge([h, s, v])
-                    # color = cv2.cvtColor(color, cv2.COLOR_HSV2BGR)[0][0]
-                    # color = (int(color[0]), int(color[1]), int(color[2]))
-                    cv2.line(frame_img, position, positions[i], color, 2, cv2.LINE_AA)
+        # Draw every known bee's trail each frame, even after it stops appearing in
+        # the data (e.g. it retired), so its trajectory doesn't disappear from view.
+        for position_data in prev_bee_positions.values():
+            positions = position_data['positions']
+            color = position_data['color']
+            for i, position in enumerate(positions[1:]):
+                cv2.line(frame_img, position, positions[i], color, 2, cv2.LINE_AA)
 
         # Draw scenting direction arrows from previous frames
         for prev_dirs in prev_scenting_directions.values():
             for prev_dir in prev_dirs:
+                arrow_color = prev_dir["color"]
                 prev_dir = prev_dir["directions"]
                 if not type(prev_dir[0]) == int:
-                    cv2.arrowedLine(frame_img, prev_dir[0],
-                                    prev_dir[1], color=(0,0,0),
-                                    thickness=3, tipLength=2) # black outline
-                    cv2.arrowedLine(frame_img, prev_dir[0],
-                                    prev_dir[1], color=arrow_color,
-                                    thickness=2, tipLength=2)
+                    cv2.arrowedLine(
+                        frame_img,
+                        prev_dir[0],
+                        prev_dir[1],
+                        color=(0, 0, 0),
+                        thickness=3,
+                        tipLength=2,
+                    )  # black outline
+                    cv2.arrowedLine(
+                        frame_img,
+                        prev_dir[0],
+                        prev_dir[1],
+                        color=arrow_color,
+                        thickness=2,
+                        tipLength=2,
+                    )
                 else:
                     # cv2.circle(frame_img, prev_dir, 2, arrow_color, -1)
                     pass
@@ -215,6 +236,7 @@ def main(args, filter_bees=None):
                 h = resnet_df.at[i, 'h']    # Height of bounding box
                 orientation = resnet_df.at[i, 'orientation'][0]
                 label = str(int(resnet_df.at[i, 'cropped_number'].split('_')[1]))
+                bee_color = COLORS[(int(label) + 1) % len(COLORS)]
 
                 centroid_x = int(x+w/2)
                 centroid_y = int(y+h/2)
@@ -247,15 +269,34 @@ def main(args, filter_bees=None):
                     prev_pos = prev_scenting_directions[label][-1]["directions"]
                     if not type(prev_pos[0]) == int:
                         prev_pos = prev_pos[0]
-                    distance = math.sqrt((centroid_x - prev_pos[0])**2 + (centroid_y - prev_pos[1])**2)
+                    distance = math.sqrt(
+                        (centroid_x - prev_pos[0]) ** 2
+                        + (centroid_y - prev_pos[1]) ** 2
+                    )
                     if distance > 10:
-                        prev_scenting_directions[label].append({"frame":frame_i, "directions":((int(pred_endx2), int(pred_endy2)),
-                                        (int(pred_x2), int(pred_y2)))})
+                        prev_scenting_directions[label].append(
+                            {
+                                "frame": frame_i,
+                                "color": bee_color,
+                                "directions": (
+                                    (int(pred_endx2), int(pred_endy2)),
+                                    (int(pred_x2), int(pred_y2)),
+                                ),
+                            }
+                        )
                     else:
-                        prev_scenting_directions[label].append({"frame":frame_i, "directions":(int(centroid_x), int(centroid_y))})
+                        prev_scenting_directions[label].append({"frame":frame_i, "color": bee_color, "directions":(int(centroid_x), int(centroid_y))})
                 else:
-                    prev_scenting_directions[label] = [{"frame":frame_i, "directions":((int(pred_endx2), int(pred_endy2)),
-                                        (int(pred_x2), int(pred_y2)))}]
+                    prev_scenting_directions[label] = [
+                        {
+                            "frame": frame_i,
+                            "color": bee_color,
+                            "directions": (
+                                (int(pred_endx2), int(pred_endy2)),
+                                (int(pred_x2), int(pred_y2)),
+                            ),
+                        }
+                    ]
 
         # NOTE: Remove old scenting directions once the path is too long
         for prev_dir in prev_scenting_directions.values():
@@ -278,7 +319,9 @@ def main(args, filter_bees=None):
 
     #------- MAKE MOVIE FROM FRAMES -------#
     print('\nMaking movie...')
-    all_img_paths = np.sort(glob2.glob(f"{folder_paths[0]}/output_frames/*.png"))
+    all_img_paths = np.sort(
+        glob2.glob(f"{folder_paths[0]}/output_frames/*.png")
+    )
     print("all paths", all_img_paths)
     all_imgs = np.array([cv2.imread(img) for img in all_img_paths])
     save_title = 'output_movie_annotated_short_trails'
@@ -297,6 +340,7 @@ def read_in_frames(denoised_frames_dir):
     denoised_filepaths = np.sort(
         glob.glob(f'{denoised_frames_dir}/**/denoised*/*.png', recursive=True))
     return denoised_filepaths
+
 
 if __name__ == '__main__':
     args = setup_args()

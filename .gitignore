@@ -1,7 +1,8 @@
 .DS_Store
-*/.DS_Store
 *.pt
 __pycache__/
 venv/
 modules/
-data/
+data/**/*.mp4
+data/**/*.png
+*.zip

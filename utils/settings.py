@@ -1,15 +1,11 @@
-# Default bee label colors in BGR color space
-# COLORS = [(73, 0, 230), (255, 180, 11), (145, 233, 80), (0, 216, 230),
-#           (245, 25, 155), (0, 163, 255), (180, 10, 220), (255, 212, 179), (160, 191, 0)]
-# COLORS = [(0, 255, 0), (70, 150, 250), (250, 80, 160)]
-# COLORS = [(181, 144, 87), (188,194,132), (164,213,159), (142,229,189), (109,245,253), (72,213,247)]
-COLORS = [(181, 144, 87), (188,194,132), (164,213,159), (142,229,189), (72,213,247)]
+COLORS = [(181, 144, 87), (188, 194, 132), (164, 213, 159), (142, 229, 189), (72, 213, 247)]
+# NOTE: for q2bs_1
+# ARTIFACT_LOCATIONS = [(0, 0, 10, 2050), (0, 1050, 90, 40), (65, 35, 90, 390), (770, 70, 60, 50)]
+# BEE_RETIREMENT_REGION = ARTIFACT_LOCATIONS[2]
 
-# define the locations of unwanted areas in the frame like the queen cage, etc.
-ARTIFACT_LOCATIONS = [(0, 0, 10, 2050), (0, 1050, 90, 40),
-                      (65, 35, 90, 390), (770, 70, 60, 50)]
-# ARTIFACT_LOCATIONS = [(loc[0] , loc[1], loc[2], loc[3]) for loc in ARTIFACT_LOCATIONS]
-
+# NOTE: for q2bs_2
+ARTIFACT_LOCATIONS = [(65, 35, 90, 390), (0, 0, 40, 350), (835, 80, 20, 20), (0, 1025, 100, 100)]
+BEE_RETIREMENT_REGION = ARTIFACT_LOCATIONS[0]
 
 VIDEO_NAME = ""
 BACKGROUND_NAME = ""
@@ -20,13 +16,11 @@ WINDOW_NAME = "frame"
 MANUAL_WINDOW_NAME = "manual point select - press ENTER to continue"
 FRAMES_PATH = "denoised_frames"
 
-# Settings for defining bee contours
-MIN_BEE_AREA = 100 # NOTE: make sure to modify these values depending on the test
-MAX_BEE_AREA = 1000
+MIN_BEE_AREA = 200
+MAX_BEE_AREA = 2000
 MIN_GROUP_AREA = 100
 MAX_GROUP_AREA = 5000
-# MAX_MOVE_DISTANCE = 10
-MAX_THRESH_COLOR_DIFF = 60
-
-LOAD_PREPROCESS_SETTINGS = False # NOTE: make sure to modify this if you want to load the previously settings or create new ones
-DEBUG = True # typically leave this on to print helpful debugging messages
+MAX_CONTOUR_DISTANCE_RATIO = 0.07
+MAX_THRESH_COLOR_DIFF = 30
+LOAD_EXISTING_PREPROCESS_SETTINGS = False
+DEBUG = True

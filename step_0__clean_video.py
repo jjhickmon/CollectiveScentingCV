@@ -1,11 +1,12 @@
 import os
 import sys
-import numpy as np
-import cv2
 import shutil
 import glob
-import imutils
 import argparse
+
+import cv2
+import imutils
+import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
 
@@ -13,6 +14,7 @@ import modules.orientation_GUI
 import utils.general as general_utils
 import utils.image as image_utils
 import utils.ffmpeg as ffmpeg_utils
+
 
 def create_helper_dirs(data_root, src_video_path):
     raw_frames_dirname = 'raw_frames'
@@ -28,6 +30,7 @@ def create_helper_dirs(data_root, src_video_path):
 
     return raw_frames_dir, denoised_frames_dirname
 
+
 def pad_image(img, pad_val=50):
     pad_shape = list(np.array(img.shape[:2]) + pad_val*2)
     if len(img.shape) == 3:
@@ -35,6 +38,7 @@ def pad_image(img, pad_val=50):
     padded_img = np.zeros(pad_shape, dtype=np.uint8)
     padded_img[pad_val:img.shape[0]+pad_val, pad_val:img.shape[1]+pad_val] = img
     return padded_img
+
 
 def correct_orientation(raw_frames_dir):
     frame_paths = np.sort(glob.glob(f'{raw_frames_dir}/frame_*.png'))
@@ -53,6 +57,7 @@ def correct_orientation(raw_frames_dir):
             except:
                 continue
 
+
 def tight_crop(raw_frames_dir):
     frame_paths = np.sort(glob.glob(f'{raw_frames_dir}/frame_*.png'))
 
@@ -68,6 +73,7 @@ def tight_crop(raw_frames_dir):
             cv2.imwrite(frame_path, new_img)
         except:
             continue
+
 
 def denoise_frames(raw_frames_dir, denoised_frames_dirname):
     raw_frame_paths = np.sort(glob.glob(f'{raw_frames_dir}/*.png'))
@@ -102,7 +108,11 @@ def main(args):
     # Convert video 2 frames
     # NOTE: For longer videos, use jpg to save space, has loss but is faster
     print("Converting Video to Frames...")
-    ffmpeg_utils.vid2frames_simple(src_video_path, raw_frames_dir, args)
+    ffmpeg_utils.vid2frames_simple(
+        src_video_path,
+        raw_frames_dir,
+        args,
+    )
     print("Number of frames:", len(glob.glob(f'{raw_frames_dir}/*.png')))
 
     # Correct orientation
@@ -174,6 +184,7 @@ def setup_args():
         args.FPS = 5
 
     return args
+
 
 if __name__ == '__main__':
     args = setup_args()

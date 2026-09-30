@@ -1,117 +1,158 @@
-import os
 import glob
-import subprocess
+import math
+import os
 import shutil
-import numpy as np
+
 import cv2
-from utils.settings import *
+import numpy as np
 
-def form_contours(image, minArea, maxArea, NUM_BEES, remove_background=False, remove_extra_contours=False):
-    global min_contour
-    # Form contours and filter by size
-    contours, hierarchy = cv2.findContours(image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    # remove background and empty space
-    if len(contours) == 0 or len(hierarchy) == 0:
-        return contours
-    hierarchy = hierarchy[0]
+from utils.settings import DEBUG, MAX_CONTOUR_DISTANCE_RATIO
 
-    # Remove background and neutral space
-    if remove_background:
-        contours = [contour for i, contour in enumerate(contours) if hierarchy[i][2] == -1]
 
-    prev_num_contours = len(contours)
-    contours = [contour for contour in contours if minArea < cv2.contourArea(contour) < maxArea]
-    if not prev_num_contours == len(contours) and DEBUG:
+def filter_contours(
+    contours,
+    min_area,
+    max_area,
+    max_count=None,
+    previous_contours=None,
+    max_distance=None,
+    return_distance_rejected=False,
+):
+    """Filter contours by area, proximity to prior contours, and optional count."""
+    previous_count = len(contours)
+    contours = [
+        contour
+        for contour in contours
+        if min_area < cv2.contourArea(contour) < max_area
+    ]
+    if previous_count != len(contours) and DEBUG:
         print("Warning: Removed contours based on area")
 
-    if remove_extra_contours:
-        # convert image to bgr
-        image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
-        cv2.drawContours(image, contours, -1, (0, 0, 255), 2)
-        if len(contours) > NUM_BEES:
-            diff = len(contours) - NUM_BEES
-            contours = sorted(contours, key=lambda contour: cv2.contourArea(contour))[diff:]
-            if DEBUG:
-                print("Warning: Removed excess contours based on NUM_BEES")
+    previous_centers = [
+        _contour_center(contour)
+        for contour in (previous_contours or [])
+    ]
+    distance_rejected = []
+    if previous_centers and max_distance is not None:
+        nearby_contours = []
+        for contour in contours:
+            center = _contour_center(contour)
+            nearest_distance = min(
+                math.hypot(
+                    center[0] - reference_point[0],
+                    center[1] - reference_point[1],
+                )
+                for reference_point in previous_centers
+            )
+            if nearest_distance <= max_distance:
+                nearby_contours.append(contour)
+            else:
+                distance_rejected.append(contour)
+        if len(nearby_contours) != len(contours) and DEBUG:
+            print("Warning: Removed contours too far from previous tracks")
+        contours = nearby_contours
+
+    if max_count is not None and len(contours) > max_count:
+        excess = len(contours) - max_count
+        contours = sorted(contours, key=cv2.contourArea)[excess:]
+        if DEBUG:
+            print("Warning: Removed excess contours based on NUM_BEES")
+
+    if return_distance_rejected:
+        return contours, distance_rejected
     return contours
 
-def imgs2vid(imgs, outpath, fps):
-    ''' Stitch together frame imgs to make a movie. '''
-    height, width, layers = imgs[0].shape
-    fourcc = cv2.VideoWriter_fourcc("m", "p", "4", "v")
-    video = cv2.VideoWriter(outpath, fourcc, fps, (width, height), True)
 
-    for img_i, img in enumerate(imgs):
-        video.write(img)
+def _contour_center(contour):
+    moments = cv2.moments(contour)
+    if moments["m00"]:
+        return moments["m10"] / moments["m00"], moments["m01"] / moments["m00"]
+    x, y, width, height = cv2.boundingRect(contour)
+    return x + width / 2, y + height / 2
 
+
+def form_contours(
+    image,
+    minArea,
+    maxArea,
+    NUM_BEES,
+    remove_background=False,
+    remove_extra_contours=False,
+    previous_contours=None,
+    return_distance_rejected=False,
+):
+    contours, hierarchy = cv2.findContours(image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours or hierarchy is None:
+        return (contours, []) if return_distance_rejected else contours
+
+    hierarchy = hierarchy[0]
+    if remove_background:
+        contours = [contour for index, contour in enumerate(contours) if hierarchy[index][2] == -1]
+
+    max_count = NUM_BEES if remove_extra_contours else None
+    max_distance = math.hypot(image.shape[1], image.shape[0]) * MAX_CONTOUR_DISTANCE_RATIO
+    return filter_contours(
+        contours,
+        minArea,
+        maxArea,
+        max_count=max_count,
+        previous_contours=previous_contours,
+        max_distance=max_distance,
+        return_distance_rejected=return_distance_rejected,
+    )
+
+
+def imgs2vid(images, output_path, fps):
+    height, width = images[0].shape[:2]
+    writer = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc("m", "p", "4", "v"), fps, (width, height), True)
+    for image in images:
+        writer.write(image)
     cv2.destroyAllWindows()
-    video.release()
+    writer.release()
+
 
 def setup_draw_img(base_img):
     draw_img = base_img.copy()
     if len(draw_img.shape) == 2:
-        draw_img = np.tile(draw_img[...,np.newaxis], (1,1,3))
+        draw_img = np.tile(draw_img[..., np.newaxis], (1, 1, 3))
     elif draw_img.shape[-1] == 1:
-        draw_img = np.tile(draw_img, (1,1,3))
+        draw_img = np.tile(draw_img, (1, 1, 3))
     return draw_img
 
-def compute_centroid(x,y,w,h):
-    centroid_x = x + w/2
-    centroid_y = y + h/2
-    return (int(centroid_x), int(centroid_y))
 
-def make_directory(dirname, root=os.getcwd(), remove_old=False):
-    dirname = os.path.sep.join(dirname.split("/"))
-    new_dir = os.path.join(root, dirname)
-    if not os.path.exists(new_dir):
-        print(f"\nCreating '{new_dir}'")
-        os.makedirs(new_dir)
-    else:
-        if remove_old:
-            print(f"Path '{new_dir}' exists! Recreating it.")
-            shutil.rmtree(new_dir)
-            os.makedirs(new_dir)
-    return new_dir
+def compute_centroid(x, y, width, height):
+    return int(x + width / 2), int(y + height / 2)
 
-def log_data(data_logger, x,y,w,h,group):
+
+def log_data(data_logger, x, y, width, height, group):
     if data_logger is not None:
-        data = {
-            "x"  : float(x),
-            "y"  : float(y),
-            "h"  : float(h),
-            "w"  : float(w),
-            "id" : group
-        }
-        data_logger.append(data)
-
+        data_logger.append({"x": float(x), "y": float(y), "h": float(height), "w": float(width), "id": group})
     return data_logger
 
-def select_file(src_video_root, max_failed_attempts=3, prefix=''):
-    src_video_paths = glob.glob(f'{src_video_root}/*{prefix}')
-    src_video_paths.sort()
 
-    for src_video_path_i, src_video_path in enumerate(src_video_paths):
-        print(f"{src_video_path_i} : {os.path.basename(src_video_path)}")
+def make_directory(dirname, root=os.getcwd(), remove_old=False):
+    new_directory = os.path.join(root, dirname.replace("/", os.path.sep))
+    if not os.path.exists(new_directory):
+        os.makedirs(new_directory)
+    elif remove_old:
+        shutil.rmtree(new_directory)
+        os.makedirs(new_directory)
+    return new_directory
 
-    num_attempts = 0
-    while True:
-        if num_attempts >= max_failed_attempts:
-            print("\n**Too many failed attempts. Exiting program.")
-            exit()
 
-        num_attempts += 1
+def select_file(source_root, max_failed_attempts=3, prefix=""):
+    paths = sorted(glob.glob(f"{source_root}/*{prefix}"))
+    for index, path in enumerate(paths):
+        print(f"{index} : {os.path.basename(path)}")
 
-        user_input = input("Select video by index: ")
+    for _ in range(max_failed_attempts):
         try:
-            user_input_idx = int(user_input)
-        except:
+            choice = int(input("Select video by index: "))
+        except ValueError:
             print("Enter valid index integer")
             continue
-        else:
-            if user_input_idx >= len(src_video_paths):
-                print(f"Invalid index choice. Only {len(src_video_paths)} videos exist to chose from.")
-                continue
-            else:
-                src_video_path = src_video_paths[user_input_idx]
-                break
-    return src_video_path
+        if 0 <= choice < len(paths):
+            return paths[choice]
+        print(f"Invalid index choice. Only {len(paths)} entries exist to choose from.")
+
+    raise SystemExit("Too many failed attempts. Exiting program.")

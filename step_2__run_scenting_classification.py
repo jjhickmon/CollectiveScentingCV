@@ -1,35 +1,31 @@
-###### IMPORTS ######
-# General
 import os
 import sys
-import cv2
 import glob
 import json
 import argparse
+
+import cv2
 import pandas as pd
 import numpy as np
-
-# Pytorch
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
-from torch.utils.data.sampler import SubsetRandomSampler
-
 import torchvision
 import torchvision.models
 import torchvision.transforms as transforms
+from torch.utils.data import Dataset, DataLoader
+from torch.utils.data.sampler import SubsetRandomSampler
+from tqdm import tqdm
 
-# Import other python files
-import scenting_classification.modules.Utils as Utils
+import utils.general as general_utils
 import scenting_classification.modules.DataHandler as DataHandler
 import scenting_classification.modules.DataSamplers as DataSamplers
 import scenting_classification.modules.EvaluationUtils as Evaluation
+import scenting_classification.modules.Utils as Utils
 
-import utils.general as general_utils
-from tqdm import tqdm
 
 def build_resnet(num_classes):
+
     print(f"Building resnet-18 with {num_classes} classes.")
     resnet = torchvision.models.resnet18(pretrained=True)
     num_ftrs = resnet.fc.in_features
@@ -37,6 +33,7 @@ def build_resnet(num_classes):
         nn.Dropout(0.5),
         nn.Linear(num_ftrs, num_classes))
     return resnet
+
 
 def predict(bee_data, num_bees, data_loader, model, device, batch_size):
     classifications = list(np.zeros(len(bee_data.data_df)))
@@ -91,8 +88,10 @@ def setup_args():
     parser.add_argument('-m', '--model_file', dest='model_file', type=str, default='ResnetScentingModel_epoch00203.pt')
     parser.add_argument('-b', '--batch_size', dest='batch_size', type=int, default=2)
     parser.add_argument('-c', '--num_classes', dest='num_classes', type=int, default=2)
+    parser.add_argument('--crop_padding', dest='crop_padding', type=int, default=0, help='Padding for cropping bee locations helps to ensure the full bee is captured')
     args = parser.parse_args()
     return args
+
 
 def main(args):
     print("-- Select root folder from list...")
@@ -110,7 +109,9 @@ def main(args):
     # Obtain up paths for video folder
     vid_name = src_processed_root.split('/')[-1]
     folder_paths = glob.glob(f'{args.data_root}/{vid_name}*')
-    json_paths = sorted([os.path.join(folder, f'data_log.json') for folder in folder_paths])
+    json_paths = sorted(
+        os.path.join(folder, 'data_log.json') for folder in folder_paths
+    )
     frames_path = f'denoised_frames/'
     if not os.path.exists(f'{src_processed_root}/{frames_path}'):
         print("Splitting video into frames...")
@@ -122,7 +123,11 @@ def main(args):
             ret, frame = cap.read()
             if ret == False:
                 break
-            cv2.imwrite(f'{src_processed_root}/{frames_path}/frame_{frame_num+1:05d}.png', frame)
+            frame_path = (
+                f'{src_processed_root}/{frames_path}/'
+                f'frame_{frame_num + 1:05d}.png'
+            )
+            cv2.imwrite(frame_path, frame)
 
     # ------------------------------------------------------------- #
     ##### DATASET & TRANSFORMS ######
@@ -131,8 +136,16 @@ def main(args):
 
     # Instantiate object for data
     print(f'Setting up data handler...')
-    bee_data = DataHandler.BeeDataset_2(args.data_root, json_paths, frames_path,
-                          baseline_transforms, augment_transforms=None, mode='eval')
+    bee_data = DataHandler.BeeDataset_2(
+        args.data_root,
+        json_paths,
+        frames_path,
+        baseline_transforms,
+        augment_transforms=None,
+        mode='eval',
+        crop_padding=args.crop_padding
+    )
+
     # NOTE: May be a better way to do this
     num_bees = len(list(json.load(open(f"{src_processed_root}/data_log.json")).values())[0])
     print(f'Number of bee images to process: {len(bee_data)}\n')
@@ -144,7 +157,12 @@ def main(args):
     batch_size = args.batch_size
     test_idxs = np.arange(0, len(bee_data))
     sampler_test = DataSamplers.SubsetIdentitySampler(indices=test_idxs)
-    data_loader = DataLoader(bee_data, batch_size=batch_size, sampler=sampler_test, drop_last=False)
+    data_loader = DataLoader(
+        bee_data,
+        batch_size=batch_size,
+        sampler=sampler_test,
+        drop_last=False,
+    )
 
     # ------------------------------------------------------------- #
     ###### MODEL ######
@@ -156,7 +174,7 @@ def main(args):
     # ------------------------------------------------------------- #
     ###### LOAD TRAINED MODEL ######
     print(f"Loading trained model...\n")
-    load_dict = torch.load(load_path, map_location=device)
+    load_dict = torch.load(load_path, map_location=device, weights_only=False)
     model.load_state_dict(load_dict['model'])
     metrics = load_dict['metrics']
     model.eval();
@@ -172,6 +190,7 @@ def main(args):
     print(f'\nSaving scenting classifications...')
     save_prediction(bee_data, classifications, folder_paths)
     print(f"Fin.")
+
 
 if __name__ == '__main__':
     args = setup_args()
